@@ -1,23 +1,22 @@
-import { connectToDatabase } from "./db";
-import { UserModel } from "@/models";
+import { connectToDatabase, getMongoDb } from "./db";
 
 export async function getOrCreateDefaultOwner() {
   await connectToDatabase();
+  const db = await getMongoDb();
 
-  const defaultEmail = "admin@tiffinsplit.local";
-
-  let owner = await UserModel.findOne({ email: defaultEmail });
-
-  if (!owner) {
-    owner = await UserModel.create({
-      name: "Tiffin Admin Owner",
-      email: defaultEmail,
-    });
+  let user = await db.collection("user").findOne({ email: "kushalwaykole57@gmail.com" });
+  if (!user) {
+    user = await db.collection("user").findOne({});
   }
 
+  // Use the owner ID associated with the primary dataset
+  const ownerId = "6a7240e262826c190cf1f011";
+
   return {
-    id: owner._id.toString(),
-    name: owner.name,
-    email: owner.email,
+    id: ownerId,
+    name: user?.name || "Kushal Waykole",
+    email: user?.email || "kushalwaykole57@gmail.com",
+    phone: user?.phone || "",
+    upiId: user?.upiId || "",
   };
 }

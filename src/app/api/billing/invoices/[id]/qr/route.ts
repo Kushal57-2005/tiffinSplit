@@ -21,9 +21,15 @@ export async function GET(
 
     const friend = await FriendModel.findOne({ _id: invoice.friendId });
 
-    if (!friend || !friend.upiId) {
+    const targetUpiId =
+      owner.upiId ||
+      process.env.ADMIN_UPI_ID ||
+      friend?.upiId ||
+      process.env.DEFAULT_UPI_ID;
+
+    if (!targetUpiId) {
       return NextResponse.json(
-        { error: `Roommate ${friend?.fullName || ""} does not have a UPI ID configured.` },
+        { error: "Please configure your Payee UPI ID in Settings before generating QR code." },
         { status: 400 }
       );
     }
@@ -35,8 +41,8 @@ export async function GET(
     const monthName = monthNames[invoice.month - 1] || `Month ${invoice.month}`;
 
     const upiPayload = buildUpiPayload({
-      upiId: friend.upiId,
-      payeeName: friend.fullName,
+      upiId: targetUpiId,
+      payeeName: owner.name || "TiffinSplit User",
       amount: invoice.amountDue,
       note: `TiffinSplit ${monthName} ${invoice.year}`,
     });
@@ -48,7 +54,7 @@ export async function GET(
     await invoice.save();
 
     return NextResponse.json({
-      upiId: friend.upiId,
+      upiId: targetUpiId,
       amountDue: invoice.amountDue,
       upiPayload,
       qrDataUrl,

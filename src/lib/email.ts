@@ -15,6 +15,7 @@ export interface InvoiceEmailParams {
   upiId?: string | null;
   upiPayload?: string | null;
   qrDataUrl?: string | null;
+  invoiceId?: string | null;
   useCidForQr?: boolean;
 }
 
@@ -51,10 +52,13 @@ export function renderInvoiceHtml(params: InvoiceEmailParams): string {
     upiId,
     upiPayload,
     qrDataUrl,
+    invoiceId,
     useCidForQr,
   } = params;
 
   const qrImageSrc = useCidForQr ? "cid:upi-qr-code" : qrDataUrl;
+  const baseUrl = process.env.BETTER_AUTH_URL || "http://localhost:3000";
+  const webPayUrl = invoiceId ? `${baseUrl}/pay/${invoiceId}` : (upiPayload || "#");
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -133,14 +137,14 @@ export function renderInvoiceHtml(params: InvoiceEmailParams): string {
     </tr>
 
     <!-- UPI PAYMENT & QR SECTION -->
-    ${(upiId || qrImageSrc || upiPayload) ? `
+    ${(upiId || qrImageSrc || webPayUrl) ? `
     <tr>
       <td style="padding: 0 24px 24px 24px;">
         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #0f172a; border-radius: 12px; border: 1px solid #334155; width: 100%; text-align: center;">
           <tr>
             <td style="padding: 20px;">
               
-              <h3 style="margin: 0 0 4px 0; font-size: 18px; color: #f8fafc; font-weight: 800;">Scan to Pay via UPI</h3>
+              <h3 style="margin: 0 0 4px 0; font-size: 18px; color: #f8fafc; font-weight: 800;">Scan or Tap to Pay via UPI</h3>
               <p style="margin: 0 0 12px 0; font-size: 12px; color: #94a3b8;">Use GPay, PhonePe, Paytm, or any UPI App</p>
 
               ${upiId ? `
@@ -157,12 +161,17 @@ export function renderInvoiceHtml(params: InvoiceEmailParams): string {
               </div>
               ` : ""}
 
-              ${upiPayload ? `
-              <div style="margin-top: 16px; text-align: center;">
-                <a href="${upiPayload}" target="_blank" style="display: inline-block; background-color: #f59e0b; color: #0f172a !important; text-decoration: none; padding: 14px 28px; border-radius: 12px; font-weight: 900; font-size: 15px; text-align: center; border: 1px solid #d97706; box-shadow: 0 4px 14px rgba(245,158,11,0.4);">
-                  Pay ₹${amountDue} Now (Open UPI App)
-                </a>
-              </div>
+              <!-- Clickable Web Payment Link (Gmail Safe) -->
+              ${webPayUrl ? `
+              <table border="0" cellspacing="0" cellpadding="0" align="center" style="margin: 20px auto 6px auto; text-align: center; width: 100%; max-width: 320px;">
+                <tr>
+                  <td align="center" bgcolor="#f59e0b" style="border-radius: 12px; background-color: #f59e0b; padding: 0;">
+                    <a href="${webPayUrl}" target="_blank" style="font-size: 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #0f172a !important; text-decoration: none; border-radius: 12px; padding: 14px 24px; border: 1px solid #d97706; display: inline-block; font-weight: 900; background-color: #f59e0b;">
+                      Pay ₹${amountDue} Now (Open UPI App) &rarr;
+                    </a>
+                  </td>
+                </tr>
+              </table>
               ` : ""}
 
             </td>

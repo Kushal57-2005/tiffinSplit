@@ -35,7 +35,14 @@ export async function POST(
     ];
     const monthName = monthNames[invoice.month - 1] || `Month ${invoice.month}`;
 
-    const targetUpiId = friend.upiId || process.env.ADMIN_UPI_ID || process.env.DEFAULT_UPI_ID || "tiffinsplit@upi";
+    const targetUpiId = owner.upiId || process.env.ADMIN_UPI_ID || friend.upiId;
+
+    if (!targetUpiId) {
+      return NextResponse.json(
+        { error: "Please enter your Payee UPI ID in Settings before sending email invoices." },
+        { status: 400 }
+      );
+    }
 
     const upiPayload = buildUpiPayload({
       upiId: targetUpiId,
@@ -61,6 +68,7 @@ export async function POST(
       upiId: targetUpiId,
       upiPayload,
       qrDataUrl,
+      invoiceId: invoice._id.toString(),
     });
 
     invoice.emailSent = true;

@@ -4,6 +4,8 @@ import mongoose, { Schema, Document, Model } from "mongoose";
 export interface IUser extends Document {
   name: string;
   email: string;
+  phone?: string;
+  upiId?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -12,12 +14,14 @@ const UserSchema = new Schema<IUser>(
   {
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
+    phone: { type: String },
+    upiId: { type: String },
   },
   { timestamps: true }
 );
 
 export const UserModel: Model<IUser> =
-  mongoose.models.User || mongoose.model<IUser>("User", UserSchema);
+  mongoose.models.User || mongoose.model<IUser>("User", UserSchema, "user");
 
 // --- Friend Model ---
 export interface IFriend extends Document {
