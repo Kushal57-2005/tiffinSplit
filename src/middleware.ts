@@ -6,15 +6,22 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const isAuthPage = pathname.startsWith("/login") || pathname.startsWith("/register");
+  const isProtectedPage = 
+    pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/entries") ||
+    pathname.startsWith("/friends") ||
+    pathname.startsWith("/billing") ||
+    pathname.startsWith("/payments") ||
+    pathname.startsWith("/audit");
 
   // If user is not logged in and trying to access a protected page, redirect to /login
-  if (!sessionCookie && !isAuthPage) {
+  if (!sessionCookie && isProtectedPage) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // If user is logged in and trying to access /login or /register, redirect to /
+  // If user is logged in and trying to access auth pages, redirect to /dashboard
   if (sessionCookie && isAuthPage) {
-    return NextResponse.redirect(new URL("/", request.url));
+    return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
   return NextResponse.next();

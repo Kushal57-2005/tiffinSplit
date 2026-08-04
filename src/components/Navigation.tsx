@@ -27,7 +27,7 @@ export function Navigation() {
   const [deleting, setDeleting] = useState(false);
 
   const navItems = [
-    { name: "Dashboard", href: "/", icon: LayoutDashboard },
+    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { name: "Friends", href: "/friends", icon: Users },
     { name: "Meal Entries", href: "/entries", icon: UtensilsCrossed },
     { name: "Monthly Bills", href: "/billing", icon: Receipt },
@@ -60,7 +60,7 @@ export function Navigation() {
       <header className="sticky top-0 z-50 backdrop-blur-md bg-slate-900/85 border-b border-slate-800/80 text-white shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <Link href="/" className="flex items-center space-x-3">
+            <Link href={session?.user ? "/dashboard" : "/"} className="flex items-center space-x-3">
               <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-amber-500 via-orange-500 to-amber-400 flex items-center justify-center shadow-md shadow-orange-500/20">
                 <UtensilsCrossed className="w-5 h-5 text-slate-950 stroke-[2.5]" />
               </div>
