@@ -150,14 +150,6 @@ export function Navigation() {
                     <UserPlus className="w-3.5 h-3.5 text-amber-400" />
                     <span>Register</span>
                   </Link>
-
-                  <button
-                    onClick={() => setShowDeleteModal(true)}
-                    className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/20 transition-colors cursor-pointer"
-                    title="Delete Account & Data"
-                  >
-                    <Trash2 className="w-3.5 h-3.5 text-rose-400" />
-                  </button>
                 </>
               )}
             </div>

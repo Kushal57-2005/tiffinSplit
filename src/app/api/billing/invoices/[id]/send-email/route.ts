@@ -35,18 +35,16 @@ export async function POST(
     ];
     const monthName = monthNames[invoice.month - 1] || `Month ${invoice.month}`;
 
-    let upiPayload = undefined;
-    let qrDataUrl = undefined;
+    const targetUpiId = friend.upiId || process.env.ADMIN_UPI_ID || process.env.DEFAULT_UPI_ID || "tiffinsplit@upi";
 
-    if (friend.upiId) {
-      upiPayload = buildUpiPayload({
-        upiId: friend.upiId,
-        payeeName: friend.fullName,
-        amount: invoice.amountDue,
-        note: `TiffinSplit ${monthName} ${invoice.year}`,
-      });
-      qrDataUrl = await generateQrDataUrl(upiPayload);
-    }
+    const upiPayload = buildUpiPayload({
+      upiId: targetUpiId,
+      payeeName: owner.name || "TiffinSplit Admin",
+      amount: invoice.amountDue,
+      note: `TiffinSplit ${monthName} ${invoice.year}`,
+    });
+
+    const qrDataUrl = await generateQrDataUrl(upiPayload);
 
     const result = await sendInvoiceEmail({
       toEmail: friend.email,
@@ -60,7 +58,7 @@ export async function POST(
       totalAmount: invoice.totalAmount,
       amountPaid: invoice.amountPaid,
       amountDue: invoice.amountDue,
-      upiId: friend.upiId || undefined,
+      upiId: targetUpiId,
       upiPayload,
       qrDataUrl,
     });

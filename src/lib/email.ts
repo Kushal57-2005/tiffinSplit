@@ -15,6 +15,7 @@ export interface InvoiceEmailParams {
   upiId?: string | null;
   upiPayload?: string | null;
   qrDataUrl?: string | null;
+  useCidForQr?: boolean;
 }
 
 export function createTransporter() {
@@ -50,13 +51,17 @@ export function renderInvoiceHtml(params: InvoiceEmailParams): string {
     upiId,
     upiPayload,
     qrDataUrl,
+    useCidForQr,
   } = params;
+
+  const qrImageSrc = useCidForQr ? "cid:upi-qr-code" : qrDataUrl;
 
   return `
     <!DOCTYPE html>
     <html>
       <head>
         <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>
           body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0f172a; color: #f8fafc; margin: 0; padding: 20px; }
           .container { max-width: 600px; margin: 0 auto; background: #1e293b; border-radius: 16px; border: 1px solid #334155; padding: 32px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
@@ -70,8 +75,9 @@ export function renderInvoiceHtml(params: InvoiceEmailParams): string {
           .label { color: #94a3b8; }
           .value { font-weight: 700; color: #f8fafc; }
           .due { color: #34d399; font-size: 18px; font-weight: 800; }
-          .qr-section { text-align: center; background: #0f172a; border-radius: 12px; padding: 20px; border: 1px solid #334155; margin-top: 20px; }
-          .upi-id { font-family: monospace; font-size: 14px; font-weight: 700; color: #fbbf24; background: rgba(251, 191, 36, 0.1); padding: 6px 12px; border-radius: 6px; display: inline-block; margin: 8px 0; }
+          .qr-section { text-align: center; background: #0f172a; border-radius: 12px; padding: 24px 20px; border: 1px solid #334155; margin-top: 20px; }
+          .upi-id { font-family: monospace; font-size: 14px; font-weight: 700; color: #fbbf24; background: rgba(251, 191, 36, 0.1); padding: 6px 14px; border-radius: 6px; display: inline-block; margin: 8px 0; border: 1px border: rgba(251, 191, 36, 0.3); }
+          .pay-btn { background: linear-gradient(to right, #f59e0b, #ea580c); color: #0f172a !important; text-decoration: none; padding: 14px 28px; border-radius: 12px; font-weight: 900; font-size: 15px; display: inline-block; margin-top: 16px; box-shadow: 0 4px 14px rgba(245, 158, 11, 0.3); }
           .footer { text-align: center; margin-top: 24px; font-size: 12px; color: #64748b; }
         </style>
       </head>
@@ -119,20 +125,23 @@ export function renderInvoiceHtml(params: InvoiceEmailParams): string {
             </div>
           </div>
 
-          ${upiId ? `
+          ${(upiId || qrDataUrl || upiPayload) ? `
           <div class="qr-section">
-            <h3 style="margin: 0; font-size: 16px; color: #f8fafc;">Scan to Pay via UPI</h3>
-            <p style="font-size: 12px; color: #94a3b8; margin: 4px 0;">Use any UPI App (GPay, PhonePe, Paytm)</p>
-            <div class="upi-id">${upiId}</div>
+            <h3 style="margin: 0; font-size: 18px; color: #f8fafc; font-weight: 800;">Scan to Pay via UPI</h3>
+            <p style="font-size: 12px; color: #94a3b8; margin: 4px 0 12px 0;">Use GPay, PhonePe, Paytm, or any UPI App</p>
+            
+            ${upiId ? `<div class="upi-id">${upiId}</div>` : ""}
 
-            ${qrDataUrl ? `
+            ${qrImageSrc ? `
             <div style="margin: 16px 0;">
-              <img src="${qrDataUrl}" alt="UPI Payment QR Code" width="180" height="180" style="margin: 0 auto; display: block; border-radius: 12px; border: 3px solid #f59e0b; padding: 6px; background: #ffffff;" />
+              <img src="${qrImageSrc}" alt="UPI Payment QR Code" width="200" height="200" style="margin: 0 auto; display: block; border-radius: 12px; border: 3px solid #f59e0b; padding: 8px; background: #ffffff;" />
             </div>
             ` : ""}
 
             ${upiPayload ? `
-            <p style="margin-top: 14px;"><a href="${upiPayload}" style="background: #f59e0b; color: #0f172a; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 800; display: inline-block;">Pay ₹${amountDue} Now</a></p>
+            <p style="margin-top: 16px;">
+              <a href="${upiPayload}" class="pay-btn">Pay ₹${amountDue} Now (Open UPI App)</a>
+            </p>
             ` : ""}
           </div>
           ` : ""}
@@ -148,7 +157,7 @@ export function renderInvoiceHtml(params: InvoiceEmailParams): string {
 
 export async function sendInvoiceEmail(params: InvoiceEmailParams) {
   const transporter = createTransporter();
-  const html = renderInvoiceHtml(params);
+  const html = renderInvoiceHtml({ ...params, useCidForQr: Boolean(transporter && params.qrDataUrl) });
 
   if (!transporter) {
     console.log(`[SMTP Not Configured] Invoice email preview generated for ${params.toEmail}:`);
@@ -159,12 +168,22 @@ export async function sendInvoiceEmail(params: InvoiceEmailParams) {
     };
   }
 
-  const mailOptions = {
+  const mailOptions: any = {
     from: process.env.SMTP_FROM || `"TiffinSplit Admin" <${process.env.SMTP_USER}>`,
     to: params.toEmail,
     subject: `TiffinSplit Invoice — ${params.monthName} ${params.year} (Amount Due: ₹${params.amountDue})`,
     html,
   };
+
+  if (params.qrDataUrl) {
+    mailOptions.attachments = [
+      {
+        filename: "upi-qr-code.png",
+        path: params.qrDataUrl,
+        cid: "upi-qr-code",
+      },
+    ];
+  }
 
   const info = await transporter.sendMail(mailOptions);
   return {
