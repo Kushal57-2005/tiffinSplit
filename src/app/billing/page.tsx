@@ -90,7 +90,7 @@ export default function BillingPage() {
   const [activeInvoice, setActiveInvoice] = useState<MonthlyInvoice | null>(null);
   const [adjustmentInput, setAdjustmentInput] = useState<number>(0);
   const [savingAdjustment, setSavingAdjustment] = useState(false);
-  const [sendingEmail, setSendingEmail] = useState(false);
+  const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
 
   // QR Modal State
   const [qrModalData, setQrModalData] = useState<{ upiId: string; payload: string; qrUrl: string; friendName: string; amount: number } | null>(null);
@@ -192,7 +192,7 @@ export default function BillingPage() {
 
   const handleSendEmail = async (invoiceId: string) => {
     try {
-      setSendingEmail(true);
+      setSendingEmailId(invoiceId);
       const res = await fetch(`/api/billing/invoices/${invoiceId}/send-email`, {
         method: "POST",
       });
@@ -207,7 +207,7 @@ export default function BillingPage() {
     } catch (err: any) {
       alert(err.message);
     } finally {
-      setSendingEmail(false);
+      setSendingEmailId(null);
     }
   };
 
@@ -460,11 +460,15 @@ export default function BillingPage() {
                       ) : (
                         <button
                           onClick={() => handleSendEmail(invoice.id)}
-                          disabled={sendingEmail}
-                          className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs transition-colors flex items-center justify-center space-x-1.5"
+                          disabled={Boolean(sendingEmailId)}
+                          className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs transition-colors flex items-center justify-center space-x-1.5 disabled:opacity-50"
                         >
-                          <Mail className="w-3.5 h-3.5 text-amber-400" />
-                          <span>Email</span>
+                          {sendingEmailId === invoice.id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" />
+                          ) : (
+                            <Mail className="w-3.5 h-3.5 text-amber-400" />
+                          )}
+                          <span>{sendingEmailId === invoice.id ? "Sending..." : "Email"}</span>
                         </button>
                       )}
                     </div>
@@ -509,11 +513,15 @@ export default function BillingPage() {
             <div className="flex items-center space-x-3 bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs">
               <button
                 onClick={() => handleSendEmail(activeInvoice.id)}
-                disabled={sendingEmail}
+                disabled={Boolean(sendingEmailId)}
                 className="px-4 py-2 rounded-lg bg-amber-500 text-slate-950 font-bold hover:bg-amber-400 disabled:opacity-50 flex items-center space-x-2"
               >
-                {sendingEmail ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />}
-                <span>Send Invoice Email</span>
+                {sendingEmailId === activeInvoice.id ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Mail className="w-3.5 h-3.5" />
+                )}
+                <span>{sendingEmailId === activeInvoice.id ? "Sending Email..." : "Send Invoice Email"}</span>
               </button>
 
               {activeInvoice.friend.upiId && (
