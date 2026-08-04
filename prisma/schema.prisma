@@ -1,0 +1,361 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum MealType {
+  MORNING
+  NIGHT
+}
+
+enum InvoiceStatus {
+  DRAFT
+  GENERATED
+  SENT
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  UPI
+  BANK_TRANSFER
+  OTHER
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+enum AuditTaskStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  BLOCKED
+  COMPLETED
+}
+
+enum AuditPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum MilestoneStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  DELAYED
+}
+
+model User {
+  id                    String             @id @default(cuid())
+  name                  String?
+  email                 String             @unique
+  emailVerified         Boolean            @default(false)
+  image                 String?
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+
+  friends               Friend[]
+  mealEntries           MealEntry[]
+  invoices              MonthlyInvoice[]
+  invoicesGenerated     MonthlyInvoice[]   @relation("InvoiceGeneratedBy")
+  paymentsRecorded      Payment[]          @relation("PaymentRecordedBy")
+  auditTasksAssigned    AuditTask[]        @relation("AuditTaskAssignedTo")
+  auditTasksCreated     AuditTask[]        @relation("AuditTaskCreatedBy")
+  auditMilestonesOwned  AuditMilestone[]   @relation("MilestoneOwner")
+  auditActivities       AuditActivityLog[]
+
+  accounts              Account[]
+  sessions              Session[]
+}
+
+model Session {
+  id           String   @id
+  expiresAt    DateTime
+  token        String   @unique
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  ipAddress    String?
+  userAgent    String?
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+}
+
+model Verification {
+  id         String    @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime?
+  updatedAt  DateTime?
+
+  @@index([identifier])
+}
+
+model Friend {
+  id              String             @id @default(cuid())
+  ownerId         String
+  owner           User               @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  fullName        String
+  shortCode       String
+  email           String?
+  phone           String?
+  upiId           String?
+  isActive        Boolean            @default(true)
+  notes           String?
+
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  mealEntryItems  MealEntryItem[]
+  invoices        MonthlyInvoice[]
+  payments        Payment[]
+
+  @@unique([ownerId, shortCode])
+  @@index([ownerId])
+  @@index([ownerId, isActive])
+}
+
+model MealEntry {
+  id              String             @id @default(cuid())
+  ownerId         String
+  owner           User               @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  entryDate       DateTime
+  mealType        MealType
+  defaultPrice    Float              @default(0)
+  rawNote         String?
+  notes           String?
+
+  totalPersons    Int                @default(0)
+  totalQuantity   Int                @default(0)
+  totalAmount     Float              @default(0)
+
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  items           MealEntryItem[]
+
+  @@index([ownerId, entryDate])
+  @@index([ownerId, mealType])
+  @@index([entryDate, mealType])
+}
+
+model MealEntryItem {
+  id              String             @id @default(cuid())
+  mealEntryId     String
+  mealEntry       MealEntry          @relation(fields: [mealEntryId], references: [id], onDelete: Cascade)
+
+  friendId        String
+  friend          Friend             @relation(fields: [friendId], references: [id], onDelete: Restrict)
+
+  quantity        Int                @default(1)
+  unitPrice       Float
+  lineTotal       Float
+
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  invoiceItems    MonthlyInvoiceItem[]
+
+  @@unique([mealEntryId, friendId])
+  @@index([friendId])
+  @@index([mealEntryId])
+}
+
+model MonthlyInvoice {
+  id                String              @id @default(cuid())
+  ownerId           String
+  owner             User                @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  friendId          String
+  friend            Friend              @relation(fields: [friendId], references: [id], onDelete: Restrict)
+
+  month             Int
+  year              Int
+
+  totalMeals        Int                 @default(0)
+  totalQuantity     Int                 @default(0)
+  subtotalAmount    Float               @default(0)
+  adjustmentAmount  Float               @default(0)
+  totalAmount       Float               @default(0)
+  amountPaid        Float               @default(0)
+  amountDue         Float               @default(0)
+
+  status            InvoiceStatus       @default(DRAFT)
+  generatedById     String?
+  generatedBy       User?               @relation("InvoiceGeneratedBy", fields: [generatedById], references: [id], onDelete: SetNull)
+
+  generatedAt       DateTime?
+  sentAt            DateTime?
+  dueDate           DateTime?
+  paidAt            DateTime?
+  emailTo           String?
+  emailSent         Boolean             @default(false)
+  qrPayload         String?
+  qrImageUrl        String?
+
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  items             MonthlyInvoiceItem[]
+  payments          Payment[]
+
+  @@unique([ownerId, friendId, month, year])
+  @@index([ownerId, month, year])
+  @@index([friendId, month, year])
+  @@index([status])
+}
+
+model MonthlyInvoiceItem {
+  id                String              @id @default(cuid())
+  invoiceId         String
+  invoice           MonthlyInvoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  mealEntryItemId   String?
+  mealEntryItem     MealEntryItem?      @relation(fields: [mealEntryItemId], references: [id], onDelete: SetNull)
+
+  entryDate         DateTime
+  mealType          MealType
+  quantity          Int                 @default(1)
+  unitPrice         Float
+  lineTotal         Float
+  description       String?
+
+  createdAt         DateTime            @default(now())
+
+  @@index([invoiceId])
+  @@index([entryDate])
+}
+
+model Payment {
+  id                String              @id @default(cuid())
+  ownerId           String
+  owner             User                @relation("PaymentRecordedBy", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  friendId          String
+  friend            Friend              @relation(fields: [friendId], references: [id], onDelete: Restrict)
+
+  invoiceId         String?
+  invoice           MonthlyInvoice?     @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+
+  amount            Float
+  paymentMethod     PaymentMethod
+  paymentStatus     PaymentStatus       @default(PENDING)
+  transactionRef    String?
+  notes             String?
+  paidAt            DateTime?
+
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@index([ownerId, paidAt])
+  @@index([friendId])
+  @@index([invoiceId])
+  @@index([paymentStatus])
+}
+
+model AuditTask {
+  id                String              @id @default(cuid())
+  title             String
+  description       String?
+  category          String
+  status            AuditTaskStatus     @default(NOT_STARTED)
+  priority          AuditPriority       @default(MEDIUM)
+
+  ownerId           String?
+  owner             User?               @relation("AuditTaskAssignedTo", fields: [ownerId], references: [id], onDelete: SetNull)
+
+  createdById       String?
+  createdBy         User?               @relation("AuditTaskCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  dueDate           DateTime?
+  completedAt       DateTime?
+  evidenceUrl       String?
+  notes             String?
+
+  milestoneId       String?
+  milestone         AuditMilestone?     @relation(fields: [milestoneId], references: [id], onDelete: SetNull)
+
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  activities        AuditActivityLog[]
+
+  @@index([status])
+  @@index([priority])
+  @@index([category])
+  @@index([milestoneId])
+}
+
+model AuditMilestone {
+  id                String              @id @default(cuid())
+  title             String
+  description       String?
+  phaseOrder        Int
+  status            MilestoneStatus     @default(NOT_STARTED)
+  startDate         DateTime?
+  targetDate        DateTime?
+  completedAt       DateTime?
+
+  ownerId           String?
+  owner             User?               @relation("MilestoneOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  tasks             AuditTask[]
+
+  @@index([phaseOrder])
+  @@index([status])
+}
+
+model AuditActivityLog {
+  id                String              @id @default(cuid())
+  taskId            String?
+  task              AuditTask?          @relation(fields: [taskId], references: [id], onDelete: SetNull)
+
+  userId            String?
+  user              User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  action            String
+  message           String?
+  createdAt         DateTime            @default(now())
+
+  @@index([taskId])
+  @@index([userId])
+  @@index([createdAt])
+}
