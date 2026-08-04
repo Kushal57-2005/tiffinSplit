@@ -68,7 +68,7 @@ export function Navigation() {
                 <span className="font-extrabold text-xl tracking-tight bg-gradient-to-r from-amber-400 via-orange-300 to-amber-200 bg-clip-text text-transparent">
                   TiffinSplit
                 </span>
-                <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-medium">
+                <span className="hidden sm:inline-block ml-2 text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-medium">
                   Roommate Billing
                 </span>
               </div>
@@ -203,7 +203,7 @@ export function Navigation() {
               Are you sure you want to delete your TiffinSplit account? This will permanently wipe all associated roommate records, daily tiffin entries, monthly invoices, and payment logs from MongoDB Atlas. This action cannot be undone.
             </p>
 
-            <div className="flex items-center justify-end space-x-3 pt-2">
+            <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3 pt-2">
               <button
                 type="button"
                 onClick={() => setShowDeleteModal(false)}

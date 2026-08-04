@@ -82,7 +82,7 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8">
       {/* Hero Command Center */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-slate-900 via-slate-900 to-amber-950/50 p-8 rounded-3xl border border-slate-800/80 shadow-2xl">
+      <div className="relative overflow-hidden bg-gradient-to-r from-slate-900 via-slate-900 to-amber-950/50 p-5 sm:p-8 rounded-3xl border border-slate-800/80 shadow-2xl">
         <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="relative z-10 space-y-4">
           <div className="flex items-center space-x-2">
@@ -92,18 +92,18 @@ export default function DashboardPage() {
             </span>
           </div>
 
-          <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
+          <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tight">
             TiffinSplit Overview & Command Center
           </h1>
-          <p className="text-slate-400 text-sm max-w-2xl">
+          <p className="text-slate-400 text-xs sm:text-sm max-w-2xl">
             Structured daily tiffin record keeping, tick-based meal entries, automated monthly grouping, locked invoice snapshots, and email billing.
           </p>
 
           {/* Core Action Buttons */}
-          <div className="flex flex-wrap gap-3 pt-2">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2">
             <Link
               href="/entries"
-              className="inline-flex items-center space-x-2 px-5 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-extrabold text-sm shadow-lg shadow-orange-500/20 transition-all cursor-pointer"
+              className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-5 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-extrabold text-sm shadow-lg shadow-orange-500/20 transition-all cursor-pointer"
             >
               <UtensilsCrossed className="w-4 h-4 stroke-[2.5]" />
               <span>Record Daily Tiffins</span>
@@ -111,7 +111,7 @@ export default function DashboardPage() {
 
             <Link
               href="/billing"
-              className="inline-flex items-center space-x-2 px-5 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm border border-slate-700 transition-all"
+              className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-5 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm border border-slate-700 transition-all"
             >
               <Receipt className="w-4 h-4 text-amber-400" />
               <span>Monthly Invoices</span>

@@ -585,18 +585,18 @@ export default function EntriesPage() {
             <span className="text-[11px] text-slate-500">e.g. 29 July N - S, 2K, KP, P, H, S</span>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <input
               type="text"
               placeholder="Paste shorthand note string..."
               value={rawNote}
               onChange={(e) => setRawNote(e.target.value)}
-              className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 font-mono placeholder-slate-600 focus:outline-none focus:border-amber-500"
+              className="w-full sm:flex-1 bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 font-mono placeholder-slate-600 focus:outline-none focus:border-amber-500"
             />
             <button
               type="button"
               onClick={handleParseShorthand}
-              className="px-4 py-2 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500/30 font-semibold text-xs transition-colors shrink-0"
+              className="w-full sm:w-auto px-4 py-2 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500/30 font-semibold text-xs transition-colors shrink-0"
             >
               Auto-Tick Form
             </button>
@@ -734,17 +734,17 @@ export default function EntriesPage() {
 
         {/* Live Calculation Bar */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-950 p-4 rounded-xl border border-slate-800">
-          <div className="flex items-center space-x-6 text-xs text-slate-300">
+          <div className="flex flex-wrap items-center justify-around sm:justify-start gap-4 sm:gap-6 text-xs text-slate-300 w-full sm:w-auto">
             <div>
               <span className="text-slate-500 block">Selected People</span>
               <span className="text-base font-bold text-white">{totalSelectedPersons}</span>
             </div>
-            <div className="h-8 w-px bg-slate-800" />
+            <div className="hidden sm:block h-8 w-px bg-slate-800" />
             <div>
               <span className="text-slate-500 block">Total Tiffins</span>
               <span className="text-base font-bold text-amber-400">{totalSelectedTiffins}</span>
             </div>
-            <div className="h-8 w-px bg-slate-800" />
+            <div className="hidden sm:block h-8 w-px bg-slate-800" />
             <div>
               <span className="text-slate-500 block">Grand Total</span>
               <span className="text-base font-extrabold text-emerald-400">₹{totalSelectedCost}</span>

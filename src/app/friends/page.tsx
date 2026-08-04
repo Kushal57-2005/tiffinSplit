@@ -237,7 +237,7 @@ export default function FriendsPage() {
           />
         </div>
 
-        <div className="flex items-center space-x-2 w-full md:w-auto">
+        <div className="flex flex-wrap items-center gap-1.5 w-full md:w-auto">
           <span className="text-xs text-slate-400 font-medium mr-1">Status:</span>
           <button
             onClick={() => setStatusFilter("active")}
@@ -425,7 +425,7 @@ export default function FriendsPage() {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-4 text-xs">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-slate-300 font-medium">Full Name *</label>
                   <input
@@ -463,7 +463,7 @@ export default function FriendsPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-slate-300 font-medium">Phone (Optional)</label>
                   <input
@@ -511,7 +511,7 @@ export default function FriendsPage() {
                 </label>
               </div>
 
-              <div className="flex items-center justify-end space-x-3 pt-3 border-t border-slate-800">
+              <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3 pt-3 border-t border-slate-800">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
@@ -522,7 +522,7 @@ export default function FriendsPage() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-5 py-2 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-bold hover:from-amber-400 hover:to-orange-400 disabled:opacity-50 flex items-center space-x-2"
+                  className="px-5 py-2 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-bold hover:from-amber-400 hover:to-orange-400 disabled:opacity-50 flex items-center justify-center space-x-2"
                 >
                   {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
                   <span>{editingFriend ? "Save Changes" : "Create Roommate"}</span>

@@ -510,11 +510,11 @@ export default function BillingPage() {
             </div>
 
             {/* Action Bar inside modal */}
-            <div className="flex items-center space-x-3 bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs">
               <button
                 onClick={() => handleSendEmail(activeInvoice.id)}
                 disabled={Boolean(sendingEmailId)}
-                className="px-4 py-2 rounded-lg bg-amber-500 text-slate-950 font-bold hover:bg-amber-400 disabled:opacity-50 flex items-center space-x-2"
+                className="w-full sm:w-auto px-4 py-2 rounded-lg bg-amber-500 text-slate-950 font-bold hover:bg-amber-400 disabled:opacity-50 flex items-center justify-center space-x-2 cursor-pointer"
               >
                 {sendingEmailId === activeInvoice.id ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -527,7 +527,7 @@ export default function BillingPage() {
               {activeInvoice.friend.upiId && (
                 <button
                   onClick={() => handleFetchQr(activeInvoice.id, activeInvoice.friend.fullName)}
-                  className="px-4 py-2 rounded-lg bg-slate-800 text-amber-300 border border-slate-700 hover:bg-slate-700 font-bold flex items-center space-x-2"
+                  className="w-full sm:w-auto px-4 py-2 rounded-lg bg-slate-800 text-amber-300 border border-slate-700 hover:bg-slate-700 font-bold flex items-center justify-center space-x-2 cursor-pointer"
                 >
                   <QrCode className="w-3.5 h-3.5 text-amber-400" />
                   <span>Show UPI QR Payload</span>
@@ -536,7 +536,7 @@ export default function BillingPage() {
             </div>
 
             {/* Invoice Breakdown Header */}
-            <div className="grid grid-cols-3 gap-3 bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs">
               <div>
                 <span className="text-slate-500 block">Subtotal</span>
                 <span className="text-base font-bold text-white font-mono">₹{activeInvoice.subtotalAmount}</span>

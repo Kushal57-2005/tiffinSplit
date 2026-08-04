@@ -56,11 +56,11 @@ export default function LandingPage() {
           </p>
 
           {/* CTAs */}
-          <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 pt-4">
             {session?.user ? (
               <Link
                 href="/dashboard"
-                className="px-8 py-4 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-400 text-slate-950 font-black text-base shadow-xl shadow-orange-500/25 hover:shadow-orange-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center space-x-2 cursor-pointer"
+                className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-400 text-slate-950 font-black text-base shadow-xl shadow-orange-500/25 hover:shadow-orange-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center space-x-2 cursor-pointer"
               >
                 <span>Go to Dashboard</span>
                 <ArrowRight className="w-5 h-5 stroke-[2.5]" />
@@ -69,7 +69,7 @@ export default function LandingPage() {
               <>
                 <Link
                   href="/register"
-                  className="px-8 py-4 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-400 text-slate-950 font-black text-base shadow-xl shadow-orange-500/25 hover:shadow-orange-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center space-x-2 cursor-pointer"
+                  className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-400 text-slate-950 font-black text-base shadow-xl shadow-orange-500/25 hover:shadow-orange-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center space-x-2 cursor-pointer"
                 >
                   <span>Start Splitting Free</span>
                   <ArrowRight className="w-5 h-5 stroke-[2.5]" />
@@ -77,7 +77,7 @@ export default function LandingPage() {
 
                 <Link
                   href="/login"
-                  className="px-8 py-4 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-base border border-slate-700/80 shadow-lg hover:border-slate-600 transition-all flex items-center space-x-2 cursor-pointer"
+                  className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-base border border-slate-700/80 shadow-lg hover:border-slate-600 transition-all flex items-center justify-center space-x-2 cursor-pointer"
                 >
                   <span>Log In to Account</span>
                 </Link>
