@@ -57,8 +57,11 @@ export function renderInvoiceHtml(params: InvoiceEmailParams): string {
   } = params;
 
   const qrImageSrc = useCidForQr ? "cid:upi-qr-code" : qrDataUrl;
-  const baseUrl = process.env.BETTER_AUTH_URL || "http://localhost:3000";
-  const webPayUrl = invoiceId ? `${baseUrl}/pay/${invoiceId}` : (upiPayload || "#");
+  const baseUrl =
+    process.env.BETTER_AUTH_URL || "https://tiffinsplit.vercel.app";
+  const webPayUrl = invoiceId
+    ? `${baseUrl}/pay/${invoiceId}`
+    : upiPayload || "#";
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -110,12 +113,16 @@ export function renderInvoiceHtml(params: InvoiceEmailParams): string {
             <td style="padding: 12px 16px; border-bottom: 1px solid #1e293b; color: #f8fafc; font-weight: 700; font-size: 13px; text-align: right;">₹${subtotalAmount}</td>
           </tr>
 
-          ${adjustmentAmount !== 0 ? `
+          ${
+            adjustmentAmount !== 0
+              ? `
           <tr>
             <td style="padding: 12px 16px; border-bottom: 1px solid #1e293b; color: #94a3b8; font-size: 13px;">Adjustment</td>
             <td style="padding: 12px 16px; border-bottom: 1px solid #1e293b; color: #fbbf24; font-weight: 700; font-size: 13px; text-align: right;">₹${adjustmentAmount}</td>
           </tr>
-          ` : ""}
+          `
+              : ""
+          }
 
           <tr>
             <td style="padding: 12px 16px; border-bottom: 1px solid #1e293b; color: #94a3b8; font-size: 13px;">Total Bill</td>
@@ -137,7 +144,9 @@ export function renderInvoiceHtml(params: InvoiceEmailParams): string {
     </tr>
 
     <!-- UPI PAYMENT & QR SECTION -->
-    ${(upiId || qrImageSrc || webPayUrl) ? `
+    ${
+      upiId || qrImageSrc || webPayUrl
+        ? `
     <tr>
       <td style="padding: 0 24px 24px 24px;">
         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #0f172a; border-radius: 12px; border: 1px solid #334155; width: 100%; text-align: center;">
@@ -147,22 +156,32 @@ export function renderInvoiceHtml(params: InvoiceEmailParams): string {
               <h3 style="margin: 0 0 4px 0; font-size: 18px; color: #f8fafc; font-weight: 800;">Scan or Tap to Pay via UPI</h3>
               <p style="margin: 0 0 12px 0; font-size: 12px; color: #94a3b8;">Use GPay, PhonePe, Paytm, or any UPI App</p>
 
-              ${upiId ? `
+              ${
+                upiId
+                  ? `
               <div style="margin: 0 0 16px 0;">
                 <span style="font-family: monospace; font-size: 13px; font-weight: 700; color: #fbbf24; background-color: rgba(251, 191, 36, 0.12); padding: 6px 14px; border-radius: 6px; border: 1px solid rgba(251, 191, 36, 0.3); display: inline-block;">
                   ${upiId}
                 </span>
               </div>
-              ` : ""}
+              `
+                  : ""
+              }
 
-              ${qrImageSrc ? `
+              ${
+                qrImageSrc
+                  ? `
               <div style="margin: 12px 0 16px 0; text-align: center;">
                 <img src="${qrImageSrc}" alt="UPI Payment QR Code" width="200" height="200" style="margin: 0 auto; display: block; border-radius: 12px; border: 3px solid #f59e0b; padding: 8px; background-color: #ffffff;" />
               </div>
-              ` : ""}
+              `
+                  : ""
+              }
 
               <!-- Clickable Web Payment Link (Gmail Safe) -->
-              ${webPayUrl ? `
+              ${
+                webPayUrl
+                  ? `
               <table border="0" cellspacing="0" cellpadding="0" align="center" style="margin: 20px auto 6px auto; text-align: center; width: 100%; max-width: 320px;">
                 <tr>
                   <td align="center" bgcolor="#f59e0b" style="border-radius: 12px; background-color: #f59e0b; padding: 0;">
@@ -172,14 +191,18 @@ export function renderInvoiceHtml(params: InvoiceEmailParams): string {
                   </td>
                 </tr>
               </table>
-              ` : ""}
+              `
+                  : ""
+              }
 
             </td>
           </tr>
         </table>
       </td>
     </tr>
-    ` : ""}
+    `
+        : ""
+    }
 
     <!-- FOOTER -->
     <tr>
@@ -196,10 +219,15 @@ export function renderInvoiceHtml(params: InvoiceEmailParams): string {
 
 export async function sendInvoiceEmail(params: InvoiceEmailParams) {
   const transporter = createTransporter();
-  const html = renderInvoiceHtml({ ...params, useCidForQr: Boolean(transporter && params.qrDataUrl) });
+  const html = renderInvoiceHtml({
+    ...params,
+    useCidForQr: Boolean(transporter && params.qrDataUrl),
+  });
 
   if (!transporter) {
-    console.log(`[SMTP Not Configured] Invoice email preview generated for ${params.toEmail}:`);
+    console.log(
+      `[SMTP Not Configured] Invoice email preview generated for ${params.toEmail}:`,
+    );
     return {
       success: true,
       preview: true,
@@ -208,7 +236,8 @@ export async function sendInvoiceEmail(params: InvoiceEmailParams) {
   }
 
   const mailOptions: any = {
-    from: process.env.SMTP_FROM || `"TiffinSplit Admin" <${process.env.SMTP_USER}>`,
+    from:
+      process.env.SMTP_FROM || `"TiffinSplit Admin" <${process.env.SMTP_USER}>`,
     to: params.toEmail,
     subject: `TiffinSplit Invoice — ${params.monthName} ${params.year} (Amount Due: ₹${params.amountDue})`,
     html,

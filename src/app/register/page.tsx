@@ -68,12 +68,15 @@ export default function RegisterPage() {
     try {
       setError("");
       setOauthLoading(provider);
-      await signIn.social({
+      const res = await signIn.social({
         provider,
         callbackURL: "/",
       });
+      if (res?.error) {
+        setError(res.error.message || `Failed to sign up with ${provider}.`);
+      }
     } catch (err: any) {
-      setError(`Failed to sign up with ${provider}. Please check client credentials.`);
+      setError(err.message || `Failed to sign up with ${provider}. Please check client credentials.`);
     } finally {
       setOauthLoading(null);
     }
