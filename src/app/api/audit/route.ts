@@ -26,10 +26,10 @@ const INITIAL_AUDIT_TASKS = [
   { title: "Switch database layer to MongoDB using Mongoose", category: "Database", status: "COMPLETED", priority: "CRITICAL" },
 ];
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     await connectToDatabase();
-    const owner = await getOrCreateDefaultOwner();
+    const owner = await getOrCreateDefaultOwner(request);
 
     let dbTasks = await AuditTaskModel.find({ ownerId: owner.id }).sort({ createdAt: 1 });
 

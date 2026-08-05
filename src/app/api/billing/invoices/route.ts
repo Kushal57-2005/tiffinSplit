@@ -6,7 +6,7 @@ import { MonthlyInvoiceModel, FriendModel } from "@/models";
 export async function GET(request: Request) {
   try {
     await connectToDatabase();
-    const owner = await getOrCreateDefaultOwner();
+    const owner = await getOrCreateDefaultOwner(request);
 
     const { searchParams } = new URL(request.url);
     const monthStr = searchParams.get("month");

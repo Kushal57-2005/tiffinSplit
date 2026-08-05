@@ -6,7 +6,7 @@ import { FriendModel } from "@/models";
 export async function GET(request: Request) {
   try {
     await connectToDatabase();
-    const owner = await getOrCreateDefaultOwner();
+    const owner = await getOrCreateDefaultOwner(request);
 
     const { searchParams } = new URL(request.url);
     const activeOnly = searchParams.get("active") === "true";
@@ -40,7 +40,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     await connectToDatabase();
-    const owner = await getOrCreateDefaultOwner();
+    const owner = await getOrCreateDefaultOwner(request);
     const body = await request.json();
 
     const { fullName, shortCode, phone, email, upiId, notes } = body;

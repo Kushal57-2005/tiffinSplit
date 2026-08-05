@@ -10,7 +10,7 @@ export async function GET(
 ) {
   try {
     await connectToDatabase();
-    const owner = await getOrCreateDefaultOwner();
+    const owner = await getOrCreateDefaultOwner(request);
     const { id } = await params;
 
     const invoice = await MonthlyInvoiceModel.findOne({ _id: id, ownerId: owner.id });

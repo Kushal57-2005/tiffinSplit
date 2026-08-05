@@ -6,7 +6,7 @@ import { FriendModel, MealEntryModel, MonthlyInvoiceModel } from "@/models";
 export async function POST(request: Request) {
   try {
     await connectToDatabase();
-    const owner = await getOrCreateDefaultOwner();
+    const owner = await getOrCreateDefaultOwner(request);
     const body = await request.json();
 
     const { month, year, friendId } = body;
@@ -60,6 +60,17 @@ export async function POST(request: Request) {
         }
       });
 
+      // Find previous month's unpaid balance if any
+      const prevMonthNum = month === 1 ? 12 : month - 1;
+      const prevYearNum = month === 1 ? year - 1 : year;
+      const prevInvoice = await MonthlyInvoiceModel.findOne({
+        ownerId: owner.id,
+        friendId: friendIdStr,
+        month: prevMonthNum,
+        year: prevYearNum,
+      });
+      const carryoverDue = prevInvoice && prevInvoice.amountDue > 0 ? prevInvoice.amountDue : 0;
+
       // Upsert invoice snapshot
       const existing = await MonthlyInvoiceModel.findOne({
         ownerId: owner.id,
@@ -68,8 +79,9 @@ export async function POST(request: Request) {
         year,
       });
 
+      const previousDue = existing && existing.previousDue !== undefined ? existing.previousDue : carryoverDue;
       const adjustmentAmount = existing ? existing.adjustmentAmount : 0;
-      const totalAmount = Math.max(0, subtotalAmount + adjustmentAmount);
+      const totalAmount = Math.max(0, subtotalAmount + previousDue + adjustmentAmount);
       const amountPaid = existing ? existing.amountPaid : 0;
       const amountDue = Math.max(0, totalAmount - amountPaid);
 
@@ -85,6 +97,8 @@ export async function POST(request: Request) {
         existing.totalMeals = totalMeals;
         existing.totalQuantity = totalQuantity;
         existing.subtotalAmount = subtotalAmount;
+        existing.previousDue = previousDue;
+        existing.adjustmentAmount = adjustmentAmount;
         existing.totalAmount = totalAmount;
         existing.amountDue = amountDue;
         existing.status = status as any;
@@ -100,6 +114,7 @@ export async function POST(request: Request) {
           totalMeals,
           totalQuantity,
           subtotalAmount,
+          previousDue,
           adjustmentAmount,
           totalAmount,
           amountPaid,

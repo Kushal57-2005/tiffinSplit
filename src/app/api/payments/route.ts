@@ -38,7 +38,7 @@ export async function recalculateInvoice(invoiceId: string) {
 export async function GET(request: Request) {
   try {
     await connectToDatabase();
-    const owner = await getOrCreateDefaultOwner();
+    const owner = await getOrCreateDefaultOwner(request);
 
     const { searchParams } = new URL(request.url);
     const friendId = searchParams.get("friendId");
@@ -86,7 +86,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     await connectToDatabase();
-    const owner = await getOrCreateDefaultOwner();
+    const owner = await getOrCreateDefaultOwner(request);
     const body = await request.json();
 
     const { friendId, invoiceId, amount, paymentMethod = "UPI", transactionRef, notes, paidAt } = body;

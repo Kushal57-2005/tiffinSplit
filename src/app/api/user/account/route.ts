@@ -10,11 +10,49 @@ import {
   AuditTaskModel
 } from "@/models";
 
+export async function GET(request: Request) {
+  try {
+    await connectToDatabase();
+    const owner = await getOrCreateDefaultOwner(request);
+    return NextResponse.json({ owner });
+  } catch (error) {
+    console.error("GET /api/user/account error:", error);
+    return NextResponse.json({ error: "Failed to fetch user account details." }, { status: 500 });
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    await connectToDatabase();
+    const db = await getMongoDb();
+    const owner = await getOrCreateDefaultOwner(request);
+    const body = await request.json();
+
+    const { name, phone, upiId } = body;
+    const updateData: any = {};
+    if (name !== undefined) updateData.name = name.trim();
+    if (phone !== undefined) updateData.phone = phone.trim();
+    if (upiId !== undefined) updateData.upiId = upiId.trim();
+
+    await db.collection("user").updateOne(
+      { _id: owner.id as any },
+      { $set: updateData },
+      { upsert: true }
+    );
+
+    const updatedOwner = await getOrCreateDefaultOwner(request);
+    return NextResponse.json({ owner: updatedOwner });
+  } catch (error) {
+    console.error("PATCH /api/user/account error:", error);
+    return NextResponse.json({ error: "Failed to update user account." }, { status: 500 });
+  }
+}
+
 export async function DELETE(request: Request) {
   try {
     await connectToDatabase();
     const db = await getMongoDb();
-    const owner = await getOrCreateDefaultOwner();
+    const owner = await getOrCreateDefaultOwner(request);
 
     const ownerId = owner.id;
 

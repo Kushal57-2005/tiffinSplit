@@ -9,7 +9,7 @@ export async function PATCH(
 ) {
   try {
     await connectToDatabase();
-    const owner = await getOrCreateDefaultOwner();
+    const owner = await getOrCreateDefaultOwner(request);
     const { id } = await params;
     const body = await request.json();
 
@@ -71,7 +71,7 @@ export async function DELETE(
 ) {
   try {
     await connectToDatabase();
-    const owner = await getOrCreateDefaultOwner();
+    const owner = await getOrCreateDefaultOwner(request);
     const { id } = await params;
 
     // Soft delete to protect historical entries

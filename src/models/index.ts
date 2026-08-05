@@ -134,6 +134,7 @@ export interface IMonthlyInvoice extends Document {
   totalMeals: number;
   totalQuantity: number;
   subtotalAmount: number;
+  previousDue?: number;
   adjustmentAmount: number;
   totalAmount: number;
   amountPaid: number;
@@ -159,6 +160,7 @@ const MonthlyInvoiceSchema = new Schema<IMonthlyInvoice>(
     totalMeals: { type: Number, default: 0 },
     totalQuantity: { type: Number, default: 0 },
     subtotalAmount: { type: Number, default: 0 },
+    previousDue: { type: Number, default: 0 },
     adjustmentAmount: { type: Number, default: 0 },
     totalAmount: { type: Number, default: 0 },
     amountPaid: { type: Number, default: 0 },

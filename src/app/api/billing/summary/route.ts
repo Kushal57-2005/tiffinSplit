@@ -6,13 +6,14 @@ import { FriendModel, MealEntryModel, MonthlyInvoiceModel } from "@/models";
 export async function GET(request: Request) {
   try {
     await connectToDatabase();
-    const owner = await getOrCreateDefaultOwner();
+    const owner = await getOrCreateDefaultOwner(request);
 
     const { searchParams } = new URL(request.url);
     const currentDate = new Date();
+    const prevMonthDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
 
-    const month = parseInt(searchParams.get("month") || (currentDate.getMonth() + 1).toString(), 10);
-    const year = parseInt(searchParams.get("year") || currentDate.getFullYear().toString(), 10);
+    const month = parseInt(searchParams.get("month") || (prevMonthDate.getMonth() + 1).toString(), 10);
+    const year = parseInt(searchParams.get("year") || prevMonthDate.getFullYear().toString(), 10);
 
     // Timezone-safe UTC month bounds
     const startDate = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0, 0));
@@ -69,6 +70,7 @@ export async function GET(request: Request) {
           totalMeals: existingInvoice.totalMeals,
           totalQuantity: existingInvoice.totalQuantity,
           subtotalAmount: existingInvoice.subtotalAmount,
+          previousDue: existingInvoice.previousDue || 0,
           adjustmentAmount: existingInvoice.adjustmentAmount,
           totalAmount: existingInvoice.totalAmount,
           amountPaid: existingInvoice.amountPaid,

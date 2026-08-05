@@ -9,7 +9,7 @@ export async function GET(
 ) {
   try {
     await connectToDatabase();
-    const owner = await getOrCreateDefaultOwner();
+    const owner = await getOrCreateDefaultOwner(request);
     const { id } = await params;
 
     const entry = await MealEntryModel.findOne({ _id: id, ownerId: owner.id });
@@ -30,7 +30,7 @@ export async function PATCH(
 ) {
   try {
     await connectToDatabase();
-    const owner = await getOrCreateDefaultOwner();
+    const owner = await getOrCreateDefaultOwner(request);
     const { id } = await params;
     const body = await request.json();
 
@@ -82,7 +82,7 @@ export async function DELETE(
 ) {
   try {
     await connectToDatabase();
-    const owner = await getOrCreateDefaultOwner();
+    const owner = await getOrCreateDefaultOwner(request);
     const { id } = await params;
 
     const deleted = await MealEntryModel.findOneAndDelete({ _id: id, ownerId: owner.id });

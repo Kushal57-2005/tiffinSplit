@@ -49,6 +49,7 @@ interface MonthlyInvoice {
   totalMeals: number;
   totalQuantity: number;
   subtotalAmount: number;
+  previousDue?: number;
   adjustmentAmount: number;
   totalAmount: number;
   amountPaid: number;
@@ -79,8 +80,9 @@ interface SummaryItem {
 
 export default function BillingPage() {
   const currentDate = new Date();
-  const [selectedMonth, setSelectedMonth] = useState<number>(currentDate.getMonth() + 1);
-  const [selectedYear, setSelectedYear] = useState<number>(currentDate.getFullYear());
+  const prevMonthDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
+  const [selectedMonth, setSelectedMonth] = useState<number>(prevMonthDate.getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState<number>(prevMonthDate.getFullYear());
 
   const [summaries, setSummaries] = useState<SummaryItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -88,6 +90,7 @@ export default function BillingPage() {
 
   // Selected Invoice Modal State
   const [activeInvoice, setActiveInvoice] = useState<MonthlyInvoice | null>(null);
+  const [previousDueInput, setPreviousDueInput] = useState<number>(0);
   const [adjustmentInput, setAdjustmentInput] = useState<number>(0);
   const [savingAdjustment, setSavingAdjustment] = useState(false);
   const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
@@ -164,7 +167,8 @@ export default function BillingPage() {
   const handleOpenInvoiceModal = (item: SummaryItem) => {
     if (item.invoice) {
       setActiveInvoice(item.invoice);
-      setAdjustmentInput(item.invoice.adjustmentAmount);
+      setPreviousDueInput(item.invoice.previousDue || 0);
+      setAdjustmentInput(item.invoice.adjustmentAmount || 0);
     }
   };
 
@@ -175,13 +179,16 @@ export default function BillingPage() {
       const res = await fetch(`/api/billing/invoices/${activeInvoice.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ adjustmentAmount: adjustmentInput }),
+        body: JSON.stringify({ 
+          previousDue: previousDueInput,
+          adjustmentAmount: adjustmentInput 
+        }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to update adjustment");
+      if (!res.ok) throw new Error(data.error || "Failed to update invoice");
 
       setActiveInvoice(data);
-      setStatusMessage("Invoice total updated with adjustment!");
+      setStatusMessage("Invoice total updated with due and adjustment!");
       fetchBillingSummary();
     } catch (err: any) {
       alert(err.message);
@@ -412,6 +419,12 @@ export default function BillingPage() {
                       <span>Subtotal</span>
                       <span className="font-semibold text-slate-200 font-mono">₹{invoice ? invoice.subtotalAmount : liveStats.subtotalAmount}</span>
                     </div>
+                    {invoice && Boolean(invoice.previousDue) && invoice.previousDue! > 0 && (
+                      <div className="flex justify-between text-slate-400">
+                        <span>Previous / Carryover Due</span>
+                        <span className="font-semibold text-rose-400 font-mono">+₹{invoice.previousDue}</span>
+                      </div>
+                    )}
                     {invoice && invoice.adjustmentAmount !== 0 && (
                       <div className="flex justify-between text-slate-400">
                         <span>Adjustment</span>
@@ -536,10 +549,14 @@ export default function BillingPage() {
             </div>
 
             {/* Invoice Breakdown Header */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs">
               <div>
                 <span className="text-slate-500 block">Subtotal</span>
                 <span className="text-base font-bold text-white font-mono">₹{activeInvoice.subtotalAmount}</span>
+              </div>
+              <div>
+                <span className="text-slate-500 block">Previous Due</span>
+                <span className="text-base font-bold text-rose-400 font-mono">₹{activeInvoice.previousDue || 0}</span>
               </div>
               <div>
                 <span className="text-slate-500 block">Adjustment</span>
@@ -551,26 +568,57 @@ export default function BillingPage() {
               </div>
             </div>
 
-            {/* Adjustment Control */}
-            <div className="bg-slate-950/80 p-3.5 rounded-xl border border-slate-800/80 space-y-2 text-xs">
-              <label className="font-bold text-amber-300 flex items-center gap-1.5">
-                <Sliders className="w-3.5 h-3.5" />
-                <span>Adjust Bill Amount (+ for extra charges, - for discounts)</span>
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="number"
-                  value={adjustmentInput}
-                  onChange={(e) => setAdjustmentInput(Number(e.target.value))}
-                  className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-slate-100 font-mono focus:outline-none focus:border-amber-500"
-                />
+            {/* Bill Controls: Previous Due & Adjustment */}
+            <div className="bg-slate-950/80 p-4 rounded-xl border border-slate-800/80 space-y-3 text-xs">
+              <div className="flex items-center gap-1.5 text-amber-300 font-bold">
+                <Sliders className="w-4 h-4" />
+                <span>Modify Invoice Dues & Adjustments</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-slate-300 font-semibold block">
+                    Add / Edit Previous Due (₹)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="e.g. 150"
+                    value={previousDueInput}
+                    onChange={(e) => setPreviousDueInput(Number(e.target.value))}
+                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-slate-100 font-mono focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-slate-300 font-semibold block">
+                    Adjust Bill Amount (+ for extra, - for discount)
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="e.g. -50"
+                    value={adjustmentInput}
+                    onChange={(e) => setAdjustmentInput(Number(e.target.value))}
+                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-slate-100 font-mono focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-1">
                 <button
                   type="button"
                   onClick={handleSaveAdjustment}
                   disabled={savingAdjustment}
-                  className="px-4 py-1.5 rounded-lg bg-amber-500 text-slate-950 font-bold hover:bg-amber-400 disabled:opacity-50 transition-colors"
+                  className="w-full sm:w-auto px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs shadow-md disabled:opacity-50 transition-colors flex items-center justify-center space-x-1.5"
                 >
-                  {savingAdjustment ? "Saving..." : "Apply Adjustment"}
+                  {savingAdjustment ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Saving Changes...</span>
+                    </>
+                  ) : (
+                    <span>Save Invoice Dues & Adjustment</span>
+                  )}
                 </button>
               </div>
             </div>

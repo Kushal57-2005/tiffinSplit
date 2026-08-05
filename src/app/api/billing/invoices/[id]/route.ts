@@ -9,7 +9,7 @@ export async function GET(
 ) {
   try {
     await connectToDatabase();
-    const owner = await getOrCreateDefaultOwner();
+    const owner = await getOrCreateDefaultOwner(request);
     const { id } = await params;
 
     const invoice = await MonthlyInvoiceModel.findOne({ _id: id, ownerId: owner.id });
@@ -37,6 +37,7 @@ export async function GET(
       totalMeals: invoice.totalMeals,
       totalQuantity: invoice.totalQuantity,
       subtotalAmount: invoice.subtotalAmount,
+      previousDue: invoice.previousDue || 0,
       adjustmentAmount: invoice.adjustmentAmount,
       totalAmount: invoice.totalAmount,
       amountPaid: invoice.amountPaid,
@@ -62,7 +63,7 @@ export async function PATCH(
 ) {
   try {
     await connectToDatabase();
-    const owner = await getOrCreateDefaultOwner();
+    const owner = await getOrCreateDefaultOwner(request);
     const { id } = await params;
     const body = await request.json();
 
@@ -71,10 +72,18 @@ export async function PATCH(
       return NextResponse.json({ error: "Invoice not found." }, { status: 404 });
     }
 
+    if (body.previousDue !== undefined) {
+      invoice.previousDue = Math.max(0, Number(body.previousDue));
+    }
+
     if (body.adjustmentAmount !== undefined) {
-      const adj = Number(body.adjustmentAmount);
-      invoice.adjustmentAmount = adj;
-      invoice.totalAmount = Math.max(0, invoice.subtotalAmount + adj);
+      invoice.adjustmentAmount = Number(body.adjustmentAmount);
+    }
+
+    if (body.previousDue !== undefined || body.adjustmentAmount !== undefined) {
+      const prevDue = invoice.previousDue || 0;
+      const adj = invoice.adjustmentAmount || 0;
+      invoice.totalAmount = Math.max(0, invoice.subtotalAmount + prevDue + adj);
       invoice.amountDue = Math.max(0, invoice.totalAmount - invoice.amountPaid);
 
       if (invoice.amountPaid >= invoice.totalAmount && invoice.totalAmount > 0) {
@@ -112,6 +121,7 @@ export async function PATCH(
       totalMeals: invoice.totalMeals,
       totalQuantity: invoice.totalQuantity,
       subtotalAmount: invoice.subtotalAmount,
+      previousDue: invoice.previousDue || 0,
       adjustmentAmount: invoice.adjustmentAmount,
       totalAmount: invoice.totalAmount,
       amountPaid: invoice.amountPaid,

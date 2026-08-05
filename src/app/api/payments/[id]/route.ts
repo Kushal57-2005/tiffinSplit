@@ -10,7 +10,7 @@ export async function DELETE(
 ) {
   try {
     await connectToDatabase();
-    const owner = await getOrCreateDefaultOwner();
+    const owner = await getOrCreateDefaultOwner(request);
     const { id } = await params;
 
     const payment = await PaymentModel.findOne({ _id: id, ownerId: owner.id });

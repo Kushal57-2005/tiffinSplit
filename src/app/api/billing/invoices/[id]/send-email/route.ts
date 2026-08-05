@@ -11,7 +11,7 @@ export async function POST(
 ) {
   try {
     await connectToDatabase();
-    const owner = await getOrCreateDefaultOwner();
+    const owner = await getOrCreateDefaultOwner(request);
     const { id } = await params;
 
     const invoice = await MonthlyInvoiceModel.findOne({ _id: id, ownerId: owner.id });
@@ -61,6 +61,7 @@ export async function POST(
       totalMeals: invoice.totalMeals,
       totalQuantity: invoice.totalQuantity,
       subtotalAmount: invoice.subtotalAmount,
+      previousDue: invoice.previousDue || 0,
       adjustmentAmount: invoice.adjustmentAmount,
       totalAmount: invoice.totalAmount,
       amountPaid: invoice.amountPaid,

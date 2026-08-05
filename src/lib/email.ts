@@ -8,6 +8,7 @@ export interface InvoiceEmailParams {
   totalMeals: number;
   totalQuantity: number;
   subtotalAmount: number;
+  previousDue?: number;
   adjustmentAmount: number;
   totalAmount: number;
   amountPaid: number;
@@ -45,6 +46,7 @@ export function renderInvoiceHtml(params: InvoiceEmailParams): string {
     totalMeals,
     totalQuantity,
     subtotalAmount,
+    previousDue = 0,
     adjustmentAmount,
     totalAmount,
     amountPaid,
@@ -112,6 +114,17 @@ export function renderInvoiceHtml(params: InvoiceEmailParams): string {
             <td style="padding: 12px 16px; border-bottom: 1px solid #1e293b; color: #94a3b8; font-size: 13px;">Subtotal</td>
             <td style="padding: 12px 16px; border-bottom: 1px solid #1e293b; color: #f8fafc; font-weight: 700; font-size: 13px; text-align: right;">₹${subtotalAmount}</td>
           </tr>
+
+          ${
+            previousDue && previousDue > 0
+              ? `
+          <tr>
+            <td style="padding: 12px 16px; border-bottom: 1px solid #1e293b; color: #94a3b8; font-size: 13px;">Previous Due</td>
+            <td style="padding: 12px 16px; border-bottom: 1px solid #1e293b; color: #f87171; font-weight: 700; font-size: 13px; text-align: right;">₹${previousDue}</td>
+          </tr>
+          `
+              : ""
+          }
 
           ${
             adjustmentAmount !== 0
