@@ -159,12 +159,6 @@ export function InvoiceDetail() {
 
   return (
     <div style={{ maxWidth: '840px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      {emailStatusMsg && (
-        <div style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success-text)', padding: '0.75rem 1rem', borderRadius: 'var(--radius-md)', fontSize: '0.85rem' }}>
-          {emailStatusMsg}
-        </div>
-      )}
-
       {feedback && (
         <div
           style={{
