@@ -509,7 +509,8 @@ p, body {
 }
 
 @media (min-width: 769px) {
-  .mobile-only-card {
+  .mobile-only-card,
+  .mobile-only-user-footer {
     display: none !important;
   }
 }

@@ -230,6 +230,7 @@ export function Navigation({ mobileOpen, setMobileOpen }) {
       {/* Mobile Drawer Footer: User Profile & Logout */}
       {user && (
         <div
+          className="mobile-only-user-footer"
           style={{
             padding: "0.85rem 1.25rem",
             borderTop: "1px solid var(--border)",

@@ -537,7 +537,7 @@ export function Invoices() {
                   Cancel
                 </Button>
                 <Button type="submit" disabled={sendingSingle}>
-                  <Send size={16} />
+                  {sendingSingle ? <LoadingSpinner size="sm" inline /> : <Send size={16} />}
                   <span>{sendingSingle ? 'Sending Email...' : 'Send Statement Email'}</span>
                 </Button>
               </div>
