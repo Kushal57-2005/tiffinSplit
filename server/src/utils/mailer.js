@@ -28,6 +28,19 @@ function getTransporter() {
   return transporter;
 }
 
+function getFromAddress() {
+  const user = process.env.SMTP_USER || "no-reply@tiffinsplit.local";
+  const rawFrom = process.env.SMTP_FROM ? process.env.SMTP_FROM.trim() : "";
+
+  if (!rawFrom) {
+    return `TiffinSplit <${user}>`;
+  }
+  if (rawFrom.includes("@")) {
+    return rawFrom;
+  }
+  return `"${rawFrom}" <${user}>`;
+}
+
 export async function sendInvitationEmail({
   recipientEmail,
   workspaceName,
@@ -35,9 +48,7 @@ export async function sendInvitationEmail({
   inviteLink,
 }) {
   const mailTransporter = getTransporter();
-  const from =
-    process.env.SMTP_FROM ||
-    `TiffinSplit <${process.env.SMTP_USER || "no-reply@tiffinsplit.local"}>`;
+  const from = getFromAddress();
 
   if (!recipientEmail) return false;
 
@@ -116,9 +127,7 @@ export async function sendInvoiceEmail({
   payeeName,
 }) {
   const mailTransporter = getTransporter();
-  const from =
-    process.env.SMTP_FROM ||
-    `TiffinSplit <${process.env.SMTP_USER || "no-reply@tiffinsplit.local"}>`;
+  const from = getFromAddress();
   const amt = amountDue !== undefined ? amountDue : totalAmount;
   const payeeUpi = upiId || "8237172878@ibl";
   const payeeStr = payeeName || "Kushal Waykole";
@@ -212,9 +221,7 @@ export async function sendPaymentReportedEmail({
   rejectUrl,
 }) {
   const mailTransporter = getTransporter();
-  const from =
-    process.env.SMTP_FROM ||
-    `TiffinSplit <${process.env.SMTP_USER || "no-reply@tiffinsplit.local"}>`;
+  const from = getFromAddress();
   const subject = `Payment Reported - ₹${amount} - ${roommateName}`;
   const targetEmail = headEmail;
 
@@ -319,9 +326,7 @@ export async function sendPaymentRejectedEmail({
   payUrl,
 }) {
   const mailTransporter = getTransporter();
-  const from =
-    process.env.SMTP_FROM ||
-    `TiffinSplit <${process.env.SMTP_USER || "no-reply@tiffinsplit.local"}>`;
+  const from = getFromAddress();
   const subject = `Payment Not Verified - TiffinSplit Invoice`;
   const targetEmail = roommateEmail;
 
