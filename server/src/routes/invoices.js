@@ -415,6 +415,11 @@ router.post('/workspaces/:workspaceId/invoices/:invoiceId/send-email', verifyWor
     });
 
     if (!sent) {
+      if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+        return res.status(500).json({
+          error: 'SMTP email credentials missing on Render server. Please set SMTP_USER and SMTP_PASS in Render Environment variables.'
+        });
+      }
       return res.status(500).json({ error: 'Failed to send email statement. Check SMTP credentials.' });
     }
 
