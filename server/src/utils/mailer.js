@@ -6,26 +6,39 @@ let transporter = null;
 export const emailLogs = [];
 
 function getTransporter() {
-  if (transporter) return transporter;
-
-  const host = process.env.SMTP_HOST || "smtp.gmail.com";
+  const host = (process.env.SMTP_HOST || "smtp.gmail.com").trim();
   const port = parseInt(process.env.SMTP_PORT) || 587;
-  const user = process.env.SMTP_USER;
+  const user = (process.env.SMTP_USER || "").trim();
   const rawPass = process.env.SMTP_PASS || "";
   const cleanPass = rawPass.replace(/\s+/g, "");
 
-  if (user && cleanPass) {
-    transporter = nodemailer.createTransport({
-      host,
-      port,
-      secure: port === 465,
+  if (!user || !cleanPass) return null;
+
+  if (host.includes("gmail")) {
+    return nodemailer.createTransport({
+      service: "gmail",
       auth: {
         user,
         pass: cleanPass,
       },
+      tls: {
+        rejectUnauthorized: false
+      }
     });
   }
-  return transporter;
+
+  return nodemailer.createTransport({
+    host,
+    port,
+    secure: port === 465,
+    auth: {
+      user,
+      pass: cleanPass,
+    },
+    tls: {
+      rejectUnauthorized: false
+    }
+  });
 }
 
 function getFromAddress() {
@@ -187,7 +200,9 @@ export async function sendInvoiceEmail({
   };
   emailLogs.unshift(logItem);
 
-  if (!mailTransporter) return false;
+  if (!mailTransporter) {
+    return { success: false, error: "SMTP_USER or SMTP_PASS is missing in Render server environment variables." };
+  }
 
   try {
     const info = await mailTransporter.sendMail({
@@ -200,10 +215,10 @@ export async function sendInvoiceEmail({
       `✔ Invoice statement email sent to ${recipientEmail}:`,
       info.messageId,
     );
-    return true;
+    return { success: true, messageId: info.messageId };
   } catch (err) {
     console.error(`❌ Failed to send invoice email to ${recipientEmail}:`, err);
-    return false;
+    return { success: false, error: err.message || err.toString() };
   }
 }
 
