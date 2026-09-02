@@ -204,15 +204,11 @@ router.post('/workspaces/:workspaceId/invoices/generate', verifyWorkspaceMember,
         let invoice;
 
         if (existing) {
-          const paidSum = existing.payments.reduce((acc, p) => (p.paymentStatus === 'SUCCESS' ? acc + p.amount : acc), 0);
+          const paidSum = (existing.payments || []).reduce((acc, p) => (p.paymentStatus === 'SUCCESS' ? acc + p.amount : acc), 0);
           const due = Math.max(0, totalAmount - paidSum);
           let status = 'GENERATED';
           if (paidSum >= totalAmount) status = 'PAID';
           else if (paidSum > 0) status = 'PARTIALLY_PAID';
-
-          await tx.monthlyInvoiceItem.deleteMany({
-            where: { invoiceId: existing.id }
-          });
 
           invoice = await tx.monthlyInvoice.update({
             where: { id: existing.id },
@@ -225,6 +221,7 @@ router.post('/workspaces/:workspaceId/invoices/generate', verifyWorkspaceMember,
               amountDue: due,
               status,
               items: {
+                deleteMany: {},
                 create: items.map((i) => ({
                   mealEntryItemId: i.id,
                   entryDate: i.mealEntry.entryDate,
@@ -288,7 +285,7 @@ router.post('/workspaces/:workspaceId/invoices/generate', verifyWorkspaceMember,
     return res.status(201).json(result);
   } catch (err) {
     console.error('Generate invoices error:', err);
-    return res.status(500).json({ error: 'Failed to generate monthly invoices' });
+    return res.status(500).json({ error: err.message || 'Failed to generate monthly invoices' });
   }
 });
 
