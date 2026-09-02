@@ -27,7 +27,20 @@ export function PublicInvoice() {
     setLoading(true);
     setError('');
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const rawApiUrl = (import.meta.env.VITE_API_URL || '/api').trim();
+      let apiUrl = rawApiUrl;
+      if (apiUrl.startsWith('http')) {
+        try {
+          const urlObj = new URL(apiUrl);
+          if (!urlObj.pathname.endsWith('/api') && !urlObj.pathname.endsWith('/api/')) {
+            apiUrl = `${urlObj.origin}/api`;
+          } else {
+            apiUrl = apiUrl.replace(/\/+$/, '');
+          }
+        } catch (e) {
+          apiUrl = rawApiUrl;
+        }
+      }
       let res = await fetch(`${apiUrl}/invoices/public/${invoiceId}`);
       if (!res.ok) {
         res = await fetch(`${apiUrl}/invoices/${invoiceId}`);
@@ -72,7 +85,20 @@ export function PublicInvoice() {
     setFeedback(null);
 
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const rawApiUrl = (import.meta.env.VITE_API_URL || '/api').trim();
+      let apiUrl = rawApiUrl;
+      if (apiUrl.startsWith('http')) {
+        try {
+          const urlObj = new URL(apiUrl);
+          if (!urlObj.pathname.endsWith('/api') && !urlObj.pathname.endsWith('/api/')) {
+            apiUrl = `${urlObj.origin}/api`;
+          } else {
+            apiUrl = apiUrl.replace(/\/+$/, '');
+          }
+        } catch (e) {
+          apiUrl = rawApiUrl;
+        }
+      }
       const token = localStorage.getItem('tiffinsplit_token');
       const headers = { 'Content-Type': 'application/json' };
       if (token) headers['Authorization'] = `Bearer ${token}`;

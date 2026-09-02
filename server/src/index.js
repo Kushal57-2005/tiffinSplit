@@ -29,8 +29,9 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Public REST API Routes
+// Public REST API Routes (supports both /api/auth and /auth endpoints)
 app.use('/api/auth', authRouter);
+app.use('/auth', authRouter);
 
 // Workspace & Entity Routes (invoicesRouter mounted FIRST to serve public /invoices and workspace /workspaces routes)
 app.use('/api/workspaces', workspaceRouter);
