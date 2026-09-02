@@ -187,6 +187,9 @@ router.post('/workspaces/:workspaceId/entries/bulk', verifyWorkspaceMember, asyn
       });
 
       return results;
+    }, {
+      maxWait: 10000,
+      timeout: 60000
     });
 
     return res.status(201).json(createdEntries);
