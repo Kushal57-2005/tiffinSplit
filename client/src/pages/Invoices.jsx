@@ -560,7 +560,7 @@ export function Invoices() {
             </div>
 
             <p style={{ fontSize: '0.9rem', color: 'var(--text)', marginBottom: '1rem' }}>
-              This will automatically dispatch monthly tiffin bill statements via Gmail SMTP to all <strong>{invoices.length} roommates</strong> listed below:
+              This will automatically dispatch monthly tiffin bill statements via email to all <strong>{invoices.length} roommates</strong> listed below:
             </p>
 
             <div style={{ maxHeight: '180px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '0.75rem', backgroundColor: 'var(--surface-muted)', marginBottom: '1.25rem' }}>

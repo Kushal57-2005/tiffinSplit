@@ -324,7 +324,7 @@ router.post('/workspaces/:workspaceId/invoices/send-all-emails', verifyWorkspace
       const invoiceUrl = `${clientUrl}/invoices/view/${inv.id}`;
 
       try {
-        const sent = await sendInvoiceEmail({
+        const resObj = await sendInvoiceEmail({
           recipientEmail,
           friendName: inv.friend.fullName,
           monthName: monthNames[inv.month - 1],
@@ -336,12 +336,14 @@ router.post('/workspaces/:workspaceId/invoices/send-all-emails', verifyWorkspace
           payeeName: setting.payeeName
         });
 
-        if (sent) {
+        const isSuccess = typeof resObj === 'boolean' ? resObj : (resObj && resObj.success);
+
+        if (isSuccess) {
           sentCount++;
           results.push({ friend: inv.friend.fullName, email: recipientEmail, status: 'SUCCESS' });
         } else {
           failedCount++;
-          results.push({ friend: inv.friend.fullName, email: recipientEmail, status: 'FAILED' });
+          results.push({ friend: inv.friend.fullName, email: recipientEmail, status: 'FAILED', error: resObj?.error || 'Failed sending email' });
         }
       } catch (err) {
         failedCount++;
