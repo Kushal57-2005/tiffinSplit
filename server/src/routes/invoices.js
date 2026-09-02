@@ -399,7 +399,7 @@ router.post('/workspaces/:workspaceId/invoices/:invoiceId/send-email', verifyWor
     ];
 
     const clientUrl = (process.env.CLIENT_URL || 'https://tiffin-split.vercel.app').trim();
-    const invoiceUrl = `${clientUrl}/invoices/view/${invoice.id}`;
+    const invoiceUrl = `${clientUrl}/invoices/view/${String(invoice.id).trim()}`;
     const setting = invoice.workspace?.setting || {};
 
     const result = await sendInvoiceEmail({
