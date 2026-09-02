@@ -54,17 +54,81 @@ function getFromAddress() {
   return `"${rawFrom}" <${user}>`;
 }
 
+// Unified Email Sending Engine: Uses Resend HTTPS API when RESEND_API_KEY is present, with Nodemailer SMTP fallback
+async function sendEmailUnified({ to, subject, html, logItem }) {
+  if (logItem) {
+    emailLogs.unshift(logItem);
+  }
+
+  const resendApiKey = process.env.RESEND_API_KEY ? process.env.RESEND_API_KEY.trim() : "";
+
+  if (resendApiKey) {
+    const from = (process.env.RESEND_FROM || process.env.SMTP_FROM || "TiffinSplit <onboarding@resend.dev>").trim();
+    console.log(`[Email Dispatch - Resend API] Recipient: ${to} | Sender: "${from}"`);
+
+    try {
+      const res = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${resendApiKey}`
+        },
+        body: JSON.stringify({
+          from,
+          to: [to],
+          subject,
+          html
+        })
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const errMsg = data.message || data.error || (data.name ? `${data.name}: ${data.message}` : `Resend HTTP ${res.status}`);
+        console.error(`❌ Resend API error sending email to ${to}:`, errMsg);
+        return { success: false, error: errMsg };
+      }
+
+      console.log(`✔ Resend email sent successfully to ${to} (ID: ${data.id})`);
+      return { success: true, messageId: data.id };
+    } catch (err) {
+      console.error(`❌ Exception sending email via Resend HTTPS API to ${to}:`, err.message);
+      return { success: false, error: `Resend API network error: ${err.message}` };
+    }
+  }
+
+  // Local SMTP Fallback
+  const mailTransporter = getTransporter();
+  const from = getFromAddress();
+
+  if (!mailTransporter) {
+    console.log(`[Mailer Log] Neither RESEND_API_KEY nor SMTP credentials configured. Email logged in-memory for ${to}`);
+    return { success: false, error: "Neither RESEND_API_KEY nor SMTP credentials configured on server." };
+  }
+
+  try {
+    const info = await mailTransporter.sendMail({
+      from,
+      to,
+      subject,
+      html,
+    });
+    console.log(`✔ SMTP email sent successfully to ${to}:`, info.messageId);
+    return { success: true, messageId: info.messageId };
+  } catch (err) {
+    console.error(`❌ Failed sending SMTP email to ${to}:`, err);
+    return { success: false, error: err.message || err.toString() };
+  }
+}
+
 export async function sendInvitationEmail({
   recipientEmail,
   workspaceName,
   inviterName,
   inviteLink,
 }) {
-  const mailTransporter = getTransporter();
-  const from = getFromAddress();
-
   if (!recipientEmail) return false;
 
+  const subject = `Invitation to join "${workspaceName}" on TiffinSplit`;
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #E5E0DA; border-radius: 12px; background-color: #FAFAF8;">
       <div style="background-color: #946D6D; color: #ffffff; padding: 18px 20px; border-radius: 8px 8px 0 0; text-align: center;">
@@ -94,38 +158,13 @@ export async function sendInvitationEmail({
   const logItem = {
     type: "INVITATION",
     recipient: recipientEmail,
-    subject: `Invitation to join "${workspaceName}" on TiffinSplit`,
+    subject,
     timestamp: new Date().toISOString(),
     html,
   };
-  emailLogs.unshift(logItem);
 
-  if (!mailTransporter) {
-    console.log(
-      `[Mailer Log] Invitation email logged to ${recipientEmail}: ${inviteLink}`,
-    );
-    return false;
-  }
-
-  try {
-    const info = await mailTransporter.sendMail({
-      from,
-      to: recipientEmail,
-      subject: logItem.subject,
-      html,
-    });
-    console.log(
-      `✔ Invitation email sent successfully to ${recipientEmail}:`,
-      info.messageId,
-    );
-    return true;
-  } catch (err) {
-    console.error(
-      `❌ Failed to send invitation email to ${recipientEmail}:`,
-      err,
-    );
-    return false;
-  }
+  const res = await sendEmailUnified({ to: recipientEmail, subject, html, logItem });
+  return res.success;
 }
 
 export async function sendInvoiceEmail({
@@ -139,8 +178,8 @@ export async function sendInvoiceEmail({
   upiId,
   payeeName,
 }) {
-  const mailTransporter = getTransporter();
-  const from = getFromAddress();
+  if (!recipientEmail) return { success: false, error: "Recipient email address is required" };
+
   const amt = amountDue !== undefined ? amountDue : totalAmount;
   const payeeUpi = upiId || "8237172878@ibl";
   const payeeStr = payeeName || "Kushal Waykole";
@@ -148,8 +187,7 @@ export async function sendInvoiceEmail({
   const note = encodeURIComponent(`TiffinSplit Bill ${monthName} ${year}`);
   const upiRawString = `upi://pay?pa=${payeeUpi}&pn=${payee}&am=${amt}&cu=INR&tn=${note}`;
   const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(upiRawString)}`;
-
-  if (!recipientEmail) return false;
+  const subject = `Pay Bill: ₹${amt} for ${monthName} ${year} — TiffinSplit`;
 
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #E5E0DA; border-radius: 12px; background-color: #FAFAF8;">
@@ -194,35 +232,14 @@ export async function sendInvoiceEmail({
   const logItem = {
     type: "INVOICE",
     recipient: recipientEmail,
-    subject: `Pay Bill: ₹${amt} for ${monthName} ${year} — TiffinSplit`,
+    subject,
     timestamp: new Date().toISOString(),
     html,
   };
-  emailLogs.unshift(logItem);
 
-  if (!mailTransporter) {
-    return { success: false, error: "SMTP_USER or SMTP_PASS is missing in Render server environment variables." };
-  }
-
-  try {
-    const info = await mailTransporter.sendMail({
-      from,
-      to: recipientEmail,
-      subject: logItem.subject,
-      html,
-    });
-    console.log(
-      `✔ Invoice statement email sent to ${recipientEmail}:`,
-      info.messageId,
-    );
-    return { success: true, messageId: info.messageId };
-  } catch (err) {
-    console.error(`❌ Failed to send invoice email to ${recipientEmail}:`, err);
-    return { success: false, error: err.message || err.toString() };
-  }
+  return await sendEmailUnified({ to: recipientEmail, subject, html, logItem });
 }
 
-// 12. EMAIL TO HEAD when payment is reported
 export async function sendPaymentReportedEmail({
   headEmail,
   headName,
@@ -235,23 +252,15 @@ export async function sendPaymentReportedEmail({
   verifyUrl,
   rejectUrl,
 }) {
-  const mailTransporter = getTransporter();
-  const from = getFromAddress();
-  const subject = `Payment Reported - ₹${amount} - ${roommateName}`;
-  const targetEmail = headEmail;
-
-  if (!targetEmail) {
-    console.warn(
-      "Cannot send Payment Reported email: Target head email is missing.",
-    );
+  if (!headEmail) {
+    console.warn("Cannot send Payment Reported email: Target head email is missing.");
     return false;
   }
 
-  const clientUrl = (
-    process.env.CLIENT_URL || "https://tiffin-split.vercel.app"
-  ).trim();
+  const clientUrl = (process.env.CLIENT_URL || "https://tiffin-split.vercel.app").trim();
   const vUrl = verifyUrl || `${clientUrl}/payments`;
   const rUrl = rejectUrl || `${clientUrl}/payments`;
+  const subject = `Payment Reported - ₹${amount} - ${roommateName}`;
 
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #E5E0DA; border-radius: 12px; background-color: #FAFAF8;">
@@ -294,42 +303,16 @@ export async function sendPaymentReportedEmail({
 
   const logItem = {
     type: "PAYMENT_REPORTED",
-    recipient: targetEmail,
+    recipient: headEmail,
     subject,
     timestamp: new Date().toISOString(),
     html,
   };
-  emailLogs.unshift(logItem);
 
-  if (!mailTransporter) {
-    console.log(
-      `[Mailer Log] Payment Reported email logged for Head (${targetEmail}): ₹${amount} by ${roommateName}`,
-    );
-    return false;
-  }
-
-  try {
-    const info = await mailTransporter.sendMail({
-      from,
-      to: targetEmail,
-      subject,
-      html,
-    });
-    console.log(
-      `✔ Payment reported email sent to Head ${targetEmail}:`,
-      info.messageId,
-    );
-    return true;
-  } catch (err) {
-    console.error(
-      `❌ Failed to send payment reported email to Head (${targetEmail}):`,
-      err,
-    );
-    return false;
-  }
+  const res = await sendEmailUnified({ to: headEmail, subject, html, logItem });
+  return res.success;
 }
 
-// 5. REJECTION EMAIL to roommate
 export async function sendPaymentRejectedEmail({
   roommateEmail,
   roommateName,
@@ -340,30 +323,21 @@ export async function sendPaymentRejectedEmail({
   payeeName,
   payUrl,
 }) {
-  const mailTransporter = getTransporter();
-  const from = getFromAddress();
-  const subject = `Payment Not Verified - TiffinSplit Invoice`;
-  const targetEmail = roommateEmail;
-
-  if (!targetEmail) {
-    console.warn(
-      "Cannot send Payment Rejected email: Target roommate email is missing.",
-    );
+  if (!roommateEmail) {
+    console.warn("Cannot send Payment Rejected email: Target roommate email is missing.");
     return false;
   }
 
   const payeeUpi = upiId || "8237172878@ibl";
   const payeeStr = payeeName || "Kushal Waykole";
-  const clientUrl = (
-    process.env.CLIENT_URL || "https://tiffin-split.vercel.app"
-  ).trim();
+  const clientUrl = (process.env.CLIENT_URL || "https://tiffin-split.vercel.app").trim();
   const url = payUrl || `${clientUrl}/invoices`;
   const amtDue = amountDue !== undefined ? amountDue : amount;
-
   const payee = encodeURIComponent(payeeStr);
   const note = encodeURIComponent(`Retry TiffinSplit Bill Payment`);
   const upiRawString = `upi://pay?pa=${payeeUpi}&pn=${payee}&am=${amtDue}&cu=INR&tn=${note}`;
   const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiRawString)}`;
+  const subject = `Payment Not Verified - TiffinSplit Invoice`;
 
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #E5E0DA; border-radius: 12px; background-color: #FAFAF8;">
@@ -404,37 +378,12 @@ export async function sendPaymentRejectedEmail({
 
   const logItem = {
     type: "PAYMENT_REJECTED",
-    recipient: targetEmail,
+    recipient: roommateEmail,
     subject,
     timestamp: new Date().toISOString(),
     html,
   };
-  emailLogs.unshift(logItem);
 
-  if (!mailTransporter) {
-    console.log(
-      `[Mailer Log] Payment Rejected email logged for Roommate (${targetEmail}): ₹${amount}`,
-    );
-    return false;
-  }
-
-  try {
-    const info = await mailTransporter.sendMail({
-      from,
-      to: targetEmail,
-      subject,
-      html,
-    });
-    console.log(
-      `✔ Payment rejected email sent to ${targetEmail}:`,
-      info.messageId,
-    );
-    return true;
-  } catch (err) {
-    console.error(
-      `❌ Failed to send payment rejected email to ${targetEmail}:`,
-      err,
-    );
-    return false;
-  }
+  const res = await sendEmailUnified({ to: roommateEmail, subject, html, logItem });
+  return res.success;
 }
