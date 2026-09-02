@@ -133,30 +133,39 @@ router.post('/workspaces/:workspaceId/entries/bulk', verifyWorkspaceMember, asyn
       const results = [];
       for (const entryData of entries) {
         const { entryDate, mealType, defaultPrice, notes, rawNote, items } = entryData;
+        if (!entryDate || !items || !Array.isArray(items) || items.length === 0) {
+          continue;
+        }
+
         const price = parseFloat(defaultPrice) || 40;
         const parsedDate = new Date(entryDate);
+        if (isNaN(parsedDate.getTime())) {
+          throw new Error(`Invalid date provided: ${entryDate}`);
+        }
 
         const entry = await tx.mealEntry.create({
           data: {
             workspaceId: req.workspaceId,
             entryDate: parsedDate,
-            mealType: mealType.toUpperCase(),
+            mealType: (mealType || 'MORNING').toUpperCase(),
             defaultPrice: price,
             notes: notes ? notes.trim() : null,
             rawNote: rawNote ? rawNote.trim() : null,
             createdById: req.user.id,
             updatedById: req.user.id,
             items: {
-              create: items.map((item) => {
-                const qty = parseInt(item.quantity) || 1;
-                const unitP = parseFloat(item.unitPrice) || price;
-                return {
-                  friendId: item.friendId,
-                  quantity: qty,
-                  unitPrice: unitP,
-                  lineTotal: qty * unitP
-                };
-              })
+              create: items
+                .filter((item) => item && item.friendId)
+                .map((item) => {
+                  const qty = parseInt(item.quantity) || 1;
+                  const unitP = parseFloat(item.unitPrice) || price;
+                  return {
+                    friendId: item.friendId,
+                    quantity: qty,
+                    unitPrice: unitP,
+                    lineTotal: qty * unitP
+                  };
+                })
             }
           },
           include: {
@@ -183,7 +192,7 @@ router.post('/workspaces/:workspaceId/entries/bulk', verifyWorkspaceMember, asyn
     return res.status(201).json(createdEntries);
   } catch (err) {
     console.error('Bulk meal create error:', err);
-    return res.status(500).json({ error: 'Failed to bulk import meal entries' });
+    return res.status(500).json({ error: err.message || 'Failed to bulk import meal entries' });
   }
 });
 
