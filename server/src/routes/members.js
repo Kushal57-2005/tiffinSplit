@@ -82,7 +82,7 @@ router.post('/workspaces/:workspaceId/invitations', authenticateUser, verifyWork
       }
     });
 
-    const clientUrl = (process.env.CLIENT_URL || 'https://tiffinsplit.vercel.app').trim();
+    const clientUrl = (process.env.CLIENT_URL || 'https://tiffin-split.vercel.app').trim();
     const inviteLink = `${clientUrl}/register?invite=${token}`;
 
     // Send invitation email in background

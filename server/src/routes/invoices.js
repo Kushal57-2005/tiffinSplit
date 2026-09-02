@@ -307,7 +307,7 @@ router.post('/workspaces/:workspaceId/invoices/send-all-emails', verifyWorkspace
       'July', 'August', 'September', 'October', 'November', 'December'
     ];
 
-    const clientUrl = (process.env.CLIENT_URL || 'https://tiffinsplit.vercel.app').trim();
+    const clientUrl = (process.env.CLIENT_URL || 'https://tiffin-split.vercel.app').trim();
     let sentCount = 0;
     let failedCount = 0;
     const results = [];
@@ -398,7 +398,7 @@ router.post('/workspaces/:workspaceId/invoices/:invoiceId/send-email', verifyWor
       'July', 'August', 'September', 'October', 'November', 'December'
     ];
 
-    const clientUrl = (process.env.CLIENT_URL || 'https://tiffinsplit.vercel.app').trim();
+    const clientUrl = (process.env.CLIENT_URL || 'https://tiffin-split.vercel.app').trim();
     const invoiceUrl = `${clientUrl}/invoices/view/${invoice.id}`;
     const setting = invoice.workspace?.setting || {};
 

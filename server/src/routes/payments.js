@@ -11,7 +11,7 @@ const router = express.Router();
 router.get('/payments/quick-action', async (req, res) => {
   try {
     const { action, paymentId } = req.query;
-    const clientUrl = (process.env.CLIENT_URL || 'https://tiffinsplit.vercel.app').trim();
+    const clientUrl = (process.env.CLIENT_URL || 'https://tiffin-split.vercel.app').trim();
 
     if (!paymentId) {
       return res.status(400).send('Invalid payment request: missing paymentId');
@@ -476,7 +476,7 @@ router.post('/workspaces/:workspaceId/payments/:paymentId/reject', verifyWorkspa
       ? `INV-${payment.invoice.year}-${String(payment.invoice.month).padStart(2, '0')}-${payment.friend.shortCode}`
       : 'N/A';
 
-    const clientUrl = (process.env.CLIENT_URL || 'https://tiffinsplit.vercel.app').trim();
+    const clientUrl = (process.env.CLIENT_URL || 'https://tiffin-split.vercel.app').trim();
 
     // Send Rejection Email to Roommate
     if (payment.friend.email) {
