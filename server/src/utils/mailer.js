@@ -6,39 +6,35 @@ let transporter = null;
 export const emailLogs = [];
 
 function getTransporter() {
+  if (transporter) return transporter;
+
   const host = (process.env.SMTP_HOST || "smtp.gmail.com").trim();
-  const port = parseInt(process.env.SMTP_PORT) || 587;
+  const port = parseInt(process.env.SMTP_PORT) || 465;
   const user = (process.env.SMTP_USER || "").trim();
   const rawPass = process.env.SMTP_PASS || "";
   const cleanPass = rawPass.replace(/\s+/g, "");
 
   if (!user || !cleanPass) return null;
 
-  if (host.includes("gmail")) {
-    return nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user,
-        pass: cleanPass,
-      },
-      tls: {
-        rejectUnauthorized: false
-      }
-    });
-  }
-
-  return nodemailer.createTransport({
-    host,
-    port,
-    secure: port === 465,
+  transporter = nodemailer.createTransport({
+    host: host.includes("gmail") ? "smtp.gmail.com" : host,
+    port: host.includes("gmail") ? 465 : port,
+    secure: host.includes("gmail") ? true : port === 465,
     auth: {
       user,
       pass: cleanPass,
     },
+    pool: true,
+    maxConnections: 5,
+    maxMessages: 100,
+    connectionTimeout: 10000,
+    socketTimeout: 10000,
     tls: {
       rejectUnauthorized: false
     }
   });
+
+  return transporter;
 }
 
 function getFromAddress() {
