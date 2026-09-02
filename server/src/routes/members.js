@@ -4,7 +4,6 @@ import prisma from '../db.js';
 import { authenticateUser } from '../middleware/auth.js';
 import { verifyWorkspaceMember } from '../middleware/workspace.js';
 import { logActivity } from '../utils/activityLogger.js';
-import { sendInvitationEmail } from '../utils/mailer.js';
 
 const router = express.Router();
 
@@ -85,13 +84,7 @@ router.post('/workspaces/:workspaceId/invitations', authenticateUser, verifyWork
     const clientUrl = (process.env.CLIENT_URL || 'https://tiffin-split.vercel.app').trim();
     const inviteLink = `${clientUrl}/register?invite=${token}`;
 
-    // Send invitation email in background
-    sendInvitationEmail({
-      recipientEmail: cleanEmail,
-      workspaceName: workspace ? workspace.name : 'TiffinSplit Workspace',
-      inviterName: req.user.name,
-      inviteLink
-    });
+
 
     await logActivity(prisma, {
       workspaceId: req.workspaceId,

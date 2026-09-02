@@ -3,7 +3,6 @@ import prisma from '../db.js';
 import { authenticateUser } from '../middleware/auth.js';
 import { verifyWorkspaceMember, verifyWorkspaceHead } from '../middleware/workspace.js';
 import { logActivity } from '../utils/activityLogger.js';
-import { sendPaymentReportedEmail, sendPaymentRejectedEmail, emailLogs } from '../utils/mailer.js';
 
 const router = express.Router();
 
@@ -126,18 +125,7 @@ router.get('/payments/quick-action', async (req, res) => {
         ? `INV-${payment.invoice.year}-${String(payment.invoice.month).padStart(2, '0')}-${payment.friend.shortCode}`
         : 'N/A';
 
-      if (payment.friend.email) {
-        sendPaymentRejectedEmail({
-          roommateEmail: payment.friend.email,
-          roommateName: payment.friend.fullName,
-          amount: payment.amount,
-          invoiceNumber: invRef,
-          amountDue: payment.invoice ? payment.invoice.amountDue : payment.amount,
-          upiId: payment.workspace?.setting?.upiId || '8237172878@ibl',
-          payeeName: payment.workspace?.setting?.payeeName || 'Kushal Waykole',
-          payUrl: `${clientUrl}/invoices/${payment.invoiceId || ''}`
-        }).catch((err) => console.error('Failed sending rejection email from quick action:', err));
-      }
+
 
       return res.send(`
         <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 60px auto; padding: 32px 24px; text-align: center; border: 1px solid #FFCDD2; border-radius: 16px; background-color: #FFEBEE;">
@@ -198,7 +186,7 @@ router.get('/workspaces/:workspaceId/payments/pending', verifyWorkspaceMember, a
         paymentStatus: 'PENDING'
       },
       include: {
-        friend: { select: { id: true, fullName: true, shortCode: true, email: true } },
+        friend: { select: { id: true, fullName: true, shortCode: true, email: true, phone: true } },
         invoice: { select: { id: true, month: true, year: true, totalAmount: true, amountDue: true, amountPaid: true, status: true } },
         recordedBy: { select: { id: true, name: true, email: true } }
       },
@@ -314,21 +302,7 @@ router.post('/workspaces/:workspaceId/payments/report', verifyWorkspaceMember, a
     const verifyUrl = `${apiUrl}/payments/quick-action?action=verify&paymentId=${newPayment.id}`;
     const rejectUrl = `${apiUrl}/payments/quick-action?action=reject&paymentId=${newPayment.id}`;
 
-    // Send email to Household Head with TWO DIRECT BUTTONS (Verify & Reject)
-    if (headEmailAddress) {
-      await sendPaymentReportedEmail({
-        headEmail: headEmailAddress,
-        headName: headNameString,
-        roommateName: newPayment.friend.fullName,
-        amount: parsedAmount,
-        invoiceNumber: invRef,
-        paymentMethod: method,
-        transactionRef: newPayment.transactionRef,
-        reportedAt: reportedTime,
-        verifyUrl,
-        rejectUrl
-      }).catch((err) => console.error('Failed sending reported email to Head:', err));
-    }
+
 
     return res.status(201).json(newPayment);
   } catch (err) {
@@ -478,19 +452,7 @@ router.post('/workspaces/:workspaceId/payments/:paymentId/reject', verifyWorkspa
 
     const clientUrl = (process.env.CLIENT_URL || 'https://tiffin-split.vercel.app').trim();
 
-    // Send Rejection Email to Roommate
-    if (payment.friend.email) {
-      sendPaymentRejectedEmail({
-        roommateEmail: payment.friend.email,
-        roommateName: payment.friend.fullName,
-        amount: payment.amount,
-        invoiceNumber: invRef,
-        amountDue: payment.invoice ? payment.invoice.amountDue : payment.amount,
-        upiId: settings ? settings.upiId : '8237172878@ibl',
-        payeeName: settings ? settings.payeeName : 'Kushal Waykole',
-        payUrl: `${clientUrl}/invoices/${payment.invoiceId || ''}`
-      }).catch((err) => console.error('Failed sending rejection email to roommate:', err));
-    }
+
 
     return res.json(rejectedPayment);
   } catch (err) {

@@ -20,14 +20,7 @@ export function Invoices() {
   const [selectedYear, setSelectedYear] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
 
-  // Single Email modal state
-  const [singleEmailModal, setSingleEmailModal] = useState(null);
-  const [singleRecipientEmail, setSingleRecipientEmail] = useState('');
-  const [sendingSingle, setSendingSingle] = useState(false);
 
-  // Batch Send All Modal state
-  const [sendAllModal, setSendAllModal] = useState(false);
-  const [sendingAll, setSendingAll] = useState(false);
 
   // Settle Payment Modal state
   const [settleModal, setSettleModal] = useState(null);
@@ -79,52 +72,7 @@ export function Invoices() {
     return true;
   });
 
-  const handleOpenSingleModal = (inv) => {
-    setSingleEmailModal(inv);
-    setSingleRecipientEmail(inv.friend.email || '');
-  };
 
-  const handleSendSingleEmail = async (e) => {
-    e.preventDefault();
-    if (!singleEmailModal) return;
-    setSendingSingle(true);
-    setFeedback(null);
-    try {
-      const res = await apiFetch(
-        `/workspaces/${activeWorkspaceId}/invoices/${singleEmailModal.id}/send-email`,
-        {
-          method: 'POST',
-          body: JSON.stringify({ email: singleRecipientEmail })
-        }
-      );
-      setFeedback({ type: 'success', message: res.message || `Bill statement email sent to ${singleEmailModal.friend.fullName}` });
-      setSingleEmailModal(null);
-    } catch (err) {
-      setFeedback({ type: 'error', message: err.message || 'Failed to send email statement' });
-    } finally {
-      setSendingSingle(false);
-    }
-  };
-
-  const handleSendAllEmails = async () => {
-    setSendingAll(true);
-    setFeedback(null);
-    try {
-      const res = await apiFetch(
-        `/workspaces/${activeWorkspaceId}/invoices/send-all-emails`,
-        { method: 'POST' }
-      );
-      setFeedback({
-        type: 'success',
-        message: res.message || `Successfully sent bill statement emails to all roommates!`
-      });
-      setSendAllModal(false);
-    } catch (err) {
-      setFeedback({ type: 'error', message: err.message || 'Failed to send batch emails' });
-    } finally {
-      setSendingAll(false);
-    }
-  };
 
   // Open Settle Payment Modal prefilled with invoice details
   const handleOpenSettleModal = (inv) => {
@@ -184,18 +132,7 @@ export function Invoices() {
           </p>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', width: '100%', maxWidth: '420px' }}>
-          {invoices.length > 0 && (
-            <Button
-              variant="secondary"
-              onClick={() => setSendAllModal(true)}
-              style={{ borderColor: 'var(--purple)', color: 'var(--purple)', flex: 1 }}
-            >
-              <Mail size={16} />
-              <span>Send All ({invoices.length})</span>
-            </Button>
-          )}
-
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', width: '100%', maxWidth: '200px' }}>
           <Button onClick={() => navigate('/invoices/generate')} style={{ flex: 1 }}>
             <FileSpreadsheet size={16} />
             <span>Generate</span>
@@ -419,16 +356,6 @@ export function Invoices() {
                           >
                             <Eye size={14} />
                           </Button>
-
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => handleOpenSingleModal(inv)}
-                            style={{ borderColor: 'var(--purple)', color: 'var(--purple)' }}
-                            title="Send Email Statement"
-                          >
-                            <Mail size={14} />
-                          </Button>
                         </div>
                       </td>
                     </tr>
@@ -503,16 +430,6 @@ export function Invoices() {
                     >
                       <Eye size={14} />
                       <span>View</span>
-                    </Button>
-
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => handleOpenSingleModal(inv)}
-                      style={{ borderColor: 'var(--purple)', color: 'var(--purple)', flex: 1 }}
-                    >
-                      <Mail size={14} />
-                      <span>Email</span>
                     </Button>
                   </div>
                 </div>
@@ -615,88 +532,7 @@ export function Invoices() {
         </div>
       )}
 
-      {/* Single Invoice Send Mail Modal */}
-      {singleEmailModal && (
-        <div className="modal-overlay" onClick={() => setSingleEmailModal(null)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Mail size={20} style={{ color: 'var(--purple)' }} /> Send Bill Email Statement
-              </h3>
-              <button onClick={() => setSingleEmailModal(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
-                <X size={20} />
-              </button>
-            </div>
 
-            <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
-              Send monthly tiffin bill statement for <strong>{monthNames[singleEmailModal.month - 1]} {singleEmailModal.year}</strong> to <strong>{singleEmailModal.friend.fullName}</strong> (Amount Due: <strong className="font-mono">₹{singleEmailModal.amountDue}</strong>).
-            </p>
-
-            <form onSubmit={handleSendSingleEmail} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">Recipient Email Address</label>
-                <input
-                  type="email"
-                  className="input font-mono"
-                  value={singleRecipientEmail}
-                  onChange={(e) => setSingleRecipientEmail(e.target.value)}
-                  placeholder="Enter roommate email"
-                  required
-                />
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
-                <Button type="button" variant="secondary" onClick={() => setSingleEmailModal(null)}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={sendingSingle}>
-                  {sendingSingle ? <LoadingSpinner size="sm" inline /> : <Send size={16} />}
-                  <span>{sendingSingle ? 'Sending Email...' : 'Send Statement Email'}</span>
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Batch Send All Invoices Modal */}
-      {sendAllModal && (
-        <div className="modal-overlay" onClick={() => setSendAllModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Mail size={20} style={{ color: 'var(--purple)' }} /> Send All Bill Emails ({invoices.length})
-              </h3>
-              <button onClick={() => setSendAllModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
-                <X size={20} />
-              </button>
-            </div>
-
-            <p style={{ fontSize: '0.9rem', color: 'var(--text)', marginBottom: '1rem' }}>
-              This will automatically dispatch monthly tiffin bill statements via email to all <strong>{invoices.length} roommates</strong> listed below:
-            </p>
-
-            <div style={{ maxHeight: '180px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '0.75rem', backgroundColor: 'var(--surface-muted)', marginBottom: '1.25rem' }}>
-              {invoices.map((inv) => (
-                <div key={inv.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', padding: '0.35rem 0', borderBottom: '1px solid var(--border)' }}>
-                  <span><strong>{inv.friend.fullName}</strong> ({inv.friend.email || 'No email specified'})</span>
-                  <strong className="font-mono">₹{inv.amountDue}</strong>
-                </div>
-              ))}
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
-              <Button type="button" variant="secondary" onClick={() => setSendAllModal(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleSendAllEmails} disabled={sendingAll}>
-                <Send size={16} />
-                <span>{sendingAll ? 'Dispatching All Emails...' : `Send Statements to All ${invoices.length} Roommates`}</span>
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

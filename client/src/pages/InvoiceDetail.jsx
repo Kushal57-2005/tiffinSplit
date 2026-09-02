@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Printer, CreditCard, QrCode, Mail, ExternalLink, Clock, AlertTriangle, CheckCircle2, X } from 'lucide-react';
+import { ArrowLeft, Printer, CreditCard, QrCode, Mail, ExternalLink, Clock, AlertTriangle, CheckCircle2, X, MessageCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/UI/Button';
 import { Badge } from '../components/UI/Badge';
 import { Modal } from '../components/UI/Modal';
 import { LoadingSpinner } from '../components/UI/LoadingSpinner';
+import { normalizePhoneNumber, formatWhatsAppBillMessage, createWhatsAppUrl } from '../utils/whatsapp';
 
 export function InvoiceDetail() {
   const { invoiceId } = useParams();
@@ -25,12 +26,6 @@ export function InvoiceDetail() {
   const [reportError, setReportError] = useState('');
   const [submittingReport, setSubmittingReport] = useState(false);
 
-  // Email modal state
-  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
-  const [customEmail, setCustomEmail] = useState('');
-  const [sendingEmail, setSendingEmail] = useState(false);
-  const [emailStatusMsg, setEmailStatusMsg] = useState('');
-
   const [feedback, setFeedback] = useState(null);
 
   const fetchInvoiceDetail = async () => {
@@ -41,7 +36,6 @@ export function InvoiceDetail() {
       setInvoice(data);
       if (data) {
         setReportAmount(data.amountDue.toString());
-        if (data.friend?.email) setCustomEmail(data.friend.email);
       }
     } catch (err) {
       console.error('Failed to fetch invoice detail:', err);
@@ -100,30 +94,49 @@ export function InvoiceDetail() {
     }
   };
 
-  const handleSendEmail = async (e) => {
-    if (e) e.preventDefault();
-    const targetEmail = customEmail || invoice.friend.email;
+  const handleSendWhatsApp = () => {
+    setFeedback(null);
+    const rawPhone = invoice?.friend?.phone;
+    const cleanPhone = normalizePhoneNumber(rawPhone);
 
-    if (!targetEmail || !targetEmail.trim()) {
-      setIsEmailModalOpen(true);
+    if (!cleanPhone) {
+      setFeedback({
+        type: 'error',
+        message: 'Phone number is not available for this member. Add a phone number before sending via WhatsApp.'
+      });
       return;
     }
 
-    setSendingEmail(true);
-    setEmailStatusMsg('');
+    const name = invoice.friend?.fullName || 'there';
+    const monthName = monthNames[invoice.month - 1];
+    const year = invoice.year;
+    const amount = invoice.amountDue > 0 ? invoice.amountDue : invoice.totalAmount;
+    const baseUrl = window.location.origin;
+    const invoiceUrl = `${baseUrl}/invoices/view/${invoice.id}`;
 
-    try {
-      const res = await apiFetch(`/workspaces/${activeWorkspaceId}/invoices/${invoice.id}/send-email`, {
-        method: 'POST',
-        body: JSON.stringify({ email: targetEmail.trim() })
+    const message = formatWhatsAppBillMessage({
+      friendName: name,
+      monthName,
+      year,
+      amount,
+      invoiceUrl
+    });
+
+    const whatsappUrl = createWhatsAppUrl(rawPhone, message);
+
+    if (!whatsappUrl) {
+      setFeedback({
+        type: 'error',
+        message: 'Phone number is not available for this member. Add a phone number before sending via WhatsApp.'
       });
-      setEmailStatusMsg(res.message);
-      setIsEmailModalOpen(false);
-    } catch (err) {
-      alert(err.message || 'Failed to send statement email');
-    } finally {
-      setSendingEmail(false);
+      return;
     }
+
+    window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+    setFeedback({
+      type: 'success',
+      message: 'WhatsApp opened with the bill message.'
+    });
   };
 
   const monthNames = [
@@ -247,8 +260,8 @@ export function InvoiceDetail() {
             </a>
           )}
 
-          <Button variant="secondary" size="sm" onClick={() => setIsEmailModalOpen(true)} disabled={sendingEmail}>
-            <Mail size={14} /> {sendingEmail ? 'Sending...' : 'Send Email Statement'}
+          <Button variant="secondary" size="sm" onClick={handleSendWhatsApp}>
+            <MessageCircle size={14} style={{ color: '#25D366' }} /> Send on WhatsApp
           </Button>
 
           <Button variant="secondary" size="sm" onClick={() => window.print()}>
@@ -618,36 +631,7 @@ export function InvoiceDetail() {
         </form>
       </Modal>
 
-      {/* Send Email Statement Modal */}
-      <Modal
-        isOpen={isEmailModalOpen}
-        onClose={() => setIsEmailModalOpen(false)}
-        title={`Send Email Statement to ${invoice.friend.fullName}`}
-      >
-        <form onSubmit={handleSendEmail}>
-          <div className="form-group">
-            <label className="form-label">Recipient Email Address *</label>
-            <input
-              type="email"
-              className="input"
-              required
-              placeholder="roommate@example.com"
-              value={customEmail}
-              onChange={(e) => setCustomEmail(e.target.value)}
-            />
-          </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.25rem' }}>
-            <Button type="button" variant="secondary" onClick={() => setIsEmailModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={sendingEmail}>
-              <Mail size={16} />
-              <span>{sendingEmail ? 'Sending Email...' : 'Send Statement'}</span>
-            </Button>
-          </div>
-        </form>
-      </Modal>
     </div>
   );
 }

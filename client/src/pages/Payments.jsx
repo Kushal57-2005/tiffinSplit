@@ -7,6 +7,7 @@ import { Card } from '../components/UI/Card';
 import { Modal } from '../components/UI/Modal';
 import { EmptyState } from '../components/UI/EmptyState';
 import { LoadingSpinner } from '../components/UI/LoadingSpinner';
+import { normalizePhoneNumber, formatWhatsAppPaymentRejectedMessage, createWhatsAppUrl } from '../utils/whatsapp';
 
 export function Payments() {
   const { activeWorkspaceId, activeWorkspace, apiFetch } = useAuth();
@@ -141,9 +142,33 @@ export function Payments() {
         body: JSON.stringify({ reason: actionReason })
       });
 
+      const targetPhone = rejectModal.friend?.phone;
+      const cleanPhone = normalizePhoneNumber(targetPhone);
+      const name = rejectModal.friend?.fullName || 'there';
+      const baseUrl = window.location.origin;
+      const invId = rejectModal.invoiceId || rejectModal.invoice?.id;
+      const invoiceUrl = invId ? `${baseUrl}/invoices/view/${invId}` : `${baseUrl}/invoices`;
+
+      let whatsappOpened = false;
+      if (cleanPhone) {
+        const message = formatWhatsAppPaymentRejectedMessage({
+          friendName: name,
+          amount: rejectModal.amount,
+          reason: actionReason,
+          invoiceUrl
+        });
+        const whatsappUrl = createWhatsAppUrl(targetPhone, message);
+        if (whatsappUrl) {
+          window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+          whatsappOpened = true;
+        }
+      }
+
       setFeedback({
         type: 'success',
-        message: `Payment rejected. Notification email sent to ${rejectModal.friend.fullName}.`
+        message: whatsappOpened
+          ? `Payment rejected. WhatsApp opened to send rejection notice to ${name}.`
+          : `Payment rejected. (Add phone number for ${name} to send WhatsApp rejection notices).`
       });
       setRejectModal(null);
       setActionReason('');
