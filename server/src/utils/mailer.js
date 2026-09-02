@@ -9,25 +9,29 @@ function getTransporter() {
   if (transporter) return transporter;
 
   const host = (process.env.SMTP_HOST || "smtp.gmail.com").trim();
-  const port = parseInt(process.env.SMTP_PORT) || 465;
+  const port = parseInt(process.env.SMTP_PORT, 10) || 587;
+  const secure = process.env.SMTP_SECURE !== undefined
+    ? (process.env.SMTP_SECURE === "true" || process.env.SMTP_SECURE === "1")
+    : port === 465;
+
   const user = (process.env.SMTP_USER || "").trim();
   const rawPass = process.env.SMTP_PASS || "";
   const cleanPass = rawPass.replace(/\s+/g, "");
 
   if (!user || !cleanPass) return null;
 
+  console.log(`[SMTP Diagnostic] Transporter Config -> Host: ${host}, Port: ${port}, Secure: ${secure}, User: ${user}`);
+
   transporter = nodemailer.createTransport({
-    host: host.includes("gmail") ? "smtp.gmail.com" : host,
-    port: host.includes("gmail") ? 465 : port,
-    secure: host.includes("gmail") ? true : port === 465,
+    host,
+    port,
+    secure,
     auth: {
       user,
       pass: cleanPass,
     },
-    pool: true,
-    maxConnections: 5,
-    maxMessages: 100,
     connectionTimeout: 10000,
+    greetingTimeout: 10000,
     socketTimeout: 10000,
     tls: {
       rejectUnauthorized: false
