@@ -1,0 +1,17 @@
+{
+  "name": "tiffinsplit-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "client": "npm --prefix client run dev",
+    "server": "npm --prefix server run dev",
+    "build": "npm --prefix client run build",
+    "db:push": "npm --prefix server run db:push",
+    "db:generate": "npm --prefix server run db:generate"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

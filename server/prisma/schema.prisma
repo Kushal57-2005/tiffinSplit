@@ -1,0 +1,207 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id               String            @id @default(uuid())
+  name             String
+  email            String            @unique
+  password         String?
+  googleId         String?           @unique
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  memberships      WorkspaceMember[]
+  createdMeals     MealEntry[]       @relation("CreatedMeals")
+  updatedMeals     MealEntry[]       @relation("UpdatedMeals")
+  generatedInvoices MonthlyInvoice[] @relation("GeneratedInvoices")
+  recordedPayments Payment[]        @relation("RecordedPayments")
+  verifiedPayments Payment[]        @relation("VerifiedPayments")
+  activityLogs     ActivityLog[]
+}
+
+model Workspace {
+  id           String            @id @default(uuid())
+  name         String
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  members      WorkspaceMember[]
+  invitations  Invitation[]
+  friends      Friend[]
+  mealEntries  MealEntry[]
+  invoices     MonthlyInvoice[]
+  payments     Payment[]
+  setting      WorkspaceSetting?
+  activityLogs ActivityLog[]
+}
+
+model WorkspaceMember {
+  id          String    @id @default(uuid())
+  workspaceId String
+  userId      String
+  role        String    @default("HEAD") // HEAD | MEMBER
+  joinedAt    DateTime  @default(now())
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+}
+
+model Invitation {
+  id          String    @id @default(uuid())
+  workspaceId String
+  email       String
+  token       String    @unique
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+}
+
+model Friend {
+  id          String         @id @default(uuid())
+  workspaceId String
+  fullName    String
+  shortCode   String
+  email       String?
+  phone       String?
+  upiId       String?
+  notes       String?
+  isActive    Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  workspace   Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  mealItems   MealEntryItem[]
+  invoices    MonthlyInvoice[]
+  payments    Payment[]
+
+  @@unique([workspaceId, shortCode])
+}
+
+model MealEntry {
+  id           String          @id @default(uuid())
+  workspaceId  String
+  entryDate    DateTime
+  mealType     String          // MORNING | NIGHT
+  defaultPrice Float
+  notes        String?
+  rawNote      String?
+  createdById  String
+  updatedById  String
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  workspace    Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy    User            @relation("CreatedMeals", fields: [createdById], references: [id])
+  updatedBy    User            @relation("UpdatedMeals", fields: [updatedById], references: [id])
+  items        MealEntryItem[]
+}
+
+model MealEntryItem {
+  id          String    @id @default(uuid())
+  mealEntryId String
+  friendId    String
+  quantity    Int       @default(1)
+  unitPrice   Float
+  lineTotal   Float
+  mealEntry   MealEntry @relation(fields: [mealEntryId], references: [id], onDelete: Cascade)
+  friend      Friend    @relation(fields: [friendId], references: [id])
+}
+
+model MonthlyInvoice {
+  id               String               @id @default(uuid())
+  workspaceId      String
+  friendId         String
+  month            Int
+  year             Int
+  totalMeals       Int
+  totalQuantity    Int
+  subtotalAmount   Float
+  adjustmentAmount Float                @default(0)
+  totalAmount      Float
+  amountPaid       Float                @default(0)
+  amountDue        Float
+  status           String               @default("GENERATED") // DRAFT | GENERATED | SENT | PARTIALLY_PAID | PAID | OVERDUE | CANCELLED
+  generatedById    String
+  generatedAt      DateTime             @default(now())
+  sentAt           DateTime?
+  dueDate          DateTime?
+  emailTo          String?
+  qrPayload        String?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  workspace        Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  friend           Friend               @relation(fields: [friendId], references: [id])
+  generatedBy      User                 @relation("GeneratedInvoices", fields: [generatedById], references: [id])
+  items            MonthlyInvoiceItem[]
+  payments         Payment[]
+
+  @@unique([workspaceId, friendId, month, year])
+}
+
+model MonthlyInvoiceItem {
+  id              String         @id @default(uuid())
+  invoiceId       String
+  mealEntryItemId String?
+  entryDate       DateTime
+  mealType        String
+  quantity        Int
+  unitPrice       Float
+  lineTotal       Float
+  description     String?
+  invoice         MonthlyInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+}
+
+model Payment {
+  id              String          @id @default(uuid())
+  workspaceId     String
+  friendId        String
+  invoiceId       String?
+  amount          Float
+  paymentMethod   String          // CASH | UPI | BANK_TRANSFER | OTHER
+  paymentStatus   String          @default("SUCCESS") // PENDING | SUCCESS | REJECTED | FAILED | REFUNDED
+  transactionRef  String?
+  notes           String?
+  paidAt          DateTime        @default(now())
+  reportedAt      DateTime?
+  verifiedAt      DateTime?
+  recordedById    String
+  verifiedById    String?
+  rejectionReason String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  workspace       Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  friend          Friend          @relation(fields: [friendId], references: [id])
+  invoice         MonthlyInvoice? @relation(fields: [invoiceId], references: [id])
+  recordedBy      User            @relation("RecordedPayments", fields: [recordedById], references: [id])
+  verifiedBy      User?           @relation("VerifiedPayments", fields: [verifiedById], references: [id])
+}
+
+model WorkspaceSetting {
+  id                 String    @id @default(uuid())
+  workspaceId        String    @unique
+  morningDefaultRate Float     @default(40)
+  nightDefaultRate   Float     @default(40)
+  currency           String    @default("INR")
+  currencySymbol     String    @default("₹")
+  upiId              String?
+  payeeName          String?
+  invoiceFooter      String?
+  workspace          Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+}
+
+model ActivityLog {
+  id          String    @id @default(uuid())
+  workspaceId String
+  userId      String
+  action      String
+  entityType  String
+  entityId    String?
+  message     String
+  createdAt   DateTime  @default(now())
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
