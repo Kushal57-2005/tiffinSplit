@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Wallet, CreditCard, CheckCircle2, XCircle, AlertTriangle, X } from 'lucide-react';
+import { Wallet, CreditCard, CheckCircle2, XCircle, AlertTriangle, X, Filter } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/UI/Button';
 import { Badge } from '../components/UI/Badge';
@@ -15,6 +15,11 @@ export function Payments() {
   const [pendingPayments, setPendingPayments] = useState([]);
   const [friends, setFriends] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Month, Year & Status Filter states
+  const [selectedMonth, setSelectedMonth] = useState('');
+  const [selectedYear, setSelectedYear] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState('');
 
   // Record Payment Modal (Head bypass direct record)
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -149,6 +154,22 @@ export function Payments() {
       setProcessingAction(false);
     }
   };
+
+  const monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
+  const filteredPayments = payments.filter((p) => {
+    const pDate = new Date(p.paidAt || p.createdAt);
+    const pMonth = p.invoice ? p.invoice.month : (pDate.getMonth() + 1);
+    const pYear = p.invoice ? p.invoice.year : pDate.getFullYear();
+
+    if (selectedMonth && String(pMonth) !== String(selectedMonth)) return false;
+    if (selectedYear && String(pYear) !== String(selectedYear)) return false;
+    if (selectedStatus && p.paymentStatus !== selectedStatus) return false;
+    return true;
+  });
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -338,6 +359,79 @@ export function Payments() {
         </Card>
       )}
 
+      {/* Month, Year & Status Filter Controls */}
+      <Card>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-muted)', fontWeight: '500', fontSize: '0.85rem' }}>
+              <Filter size={16} />
+              <span>Filter:</span>
+            </div>
+
+            {/* Month Selector */}
+            <select
+              className="select"
+              style={{ width: 'auto', minWidth: '130px' }}
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+            >
+              <option value="">All Months</option>
+              {monthNames.map((m, idx) => (
+                <option key={idx + 1} value={idx + 1}>
+                  {m}
+                </option>
+              ))}
+            </select>
+
+            {/* Year Selector */}
+            <select
+              className="select"
+              style={{ width: 'auto', minWidth: '105px' }}
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(e.target.value)}
+            >
+              <option value="">All Years</option>
+              <option value="2024">2024</option>
+              <option value="2025">2025</option>
+              <option value="2026">2026</option>
+              <option value="2027">2027</option>
+            </select>
+
+            {/* Status Selector */}
+            <select
+              className="select"
+              style={{ width: 'auto', minWidth: '130px' }}
+              value={selectedStatus}
+              onChange={(e) => setSelectedStatus(e.target.value)}
+            >
+              <option value="">All Statuses</option>
+              <option value="SUCCESS">Verified / Success</option>
+              <option value="PENDING">Pending Verification</option>
+              <option value="REJECTED">Rejected</option>
+            </select>
+
+            {(selectedMonth || selectedYear || selectedStatus) && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  setSelectedMonth('');
+                  setSelectedYear('');
+                  setSelectedStatus('');
+                }}
+                style={{ fontSize: '0.78rem', padding: '0.3rem 0.55rem' }}
+              >
+                <X size={14} /> Clear
+              </Button>
+            )}
+          </div>
+
+          <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontWeight: '500' }}>
+            Showing {filteredPayments.length} of {payments.length} payments
+          </div>
+        </div>
+      </Card>
+
       {loading ? (
         <LoadingSpinner message="Fetching payment history..." />
       ) : payments.length === 0 ? (
@@ -349,6 +443,25 @@ export function Payments() {
             <Button onClick={openPaymentModal}>
               <CreditCard size={16} />
               <span>Record First Payment</span>
+            </Button>
+          }
+        />
+      ) : filteredPayments.length === 0 ? (
+        <EmptyState
+          icon={Filter}
+          title="No payments match selected filters"
+          description={`No payments found matching Month: ${selectedMonth ? monthNames[selectedMonth - 1] : 'All'}, Year: ${selectedYear || 'All'}, Status: ${selectedStatus || 'All'}.`}
+          action={
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setSelectedMonth('');
+                setSelectedYear('');
+                setSelectedStatus('');
+              }}
+            >
+              <X size={16} />
+              <span>Reset Filters</span>
             </Button>
           }
         />
@@ -369,7 +482,7 @@ export function Payments() {
                 </tr>
               </thead>
               <tbody>
-                {payments.map((p) => {
+                {filteredPayments.map((p) => {
                   const isSuccess = p.paymentStatus === 'SUCCESS';
                   const isPending = p.paymentStatus === 'PENDING';
                   const isRejected = p.paymentStatus === 'REJECTED';
@@ -438,7 +551,7 @@ export function Payments() {
 
           {/* Mobile Cards View */}
           <div className="mobile-only-card" style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-            {payments.map((p) => {
+            {filteredPayments.map((p) => {
               const isSuccess = p.paymentStatus === 'SUCCESS';
               const isPending = p.paymentStatus === 'PENDING';
               const isRejected = p.paymentStatus === 'REJECTED';

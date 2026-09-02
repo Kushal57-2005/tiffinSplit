@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { UtensilsCrossed, Plus, Edit3, Trash2, Filter, FileText } from 'lucide-react';
+import { UtensilsCrossed, Plus, Edit3, Trash2, Filter, FileText, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Card } from '../components/UI/Card';
 import { Button } from '../components/UI/Button';
@@ -15,8 +15,17 @@ export function MealEntries() {
 
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Filters state
+  const [selectedMonth, setSelectedMonth] = useState('');
+  const [selectedYear, setSelectedYear] = useState('');
   const [mealTypeFilter, setMealTypeFilter] = useState('');
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
+
+  const monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
 
   const fetchEntries = async () => {
     if (!activeWorkspaceId) {
@@ -26,7 +35,12 @@ export function MealEntries() {
     setLoading(true);
     try {
       let url = `/workspaces/${activeWorkspaceId}/entries`;
-      if (mealTypeFilter) url += `?mealType=${mealTypeFilter}`;
+      const params = new URLSearchParams();
+      if (mealTypeFilter) params.append('mealType', mealTypeFilter);
+      if (selectedMonth) params.append('month', selectedMonth);
+      if (selectedYear) params.append('year', selectedYear);
+      if (params.toString()) url += `?${params.toString()}`;
+
       const data = await apiFetch(url);
       setEntries(data);
     } catch (err) {
@@ -38,7 +52,7 @@ export function MealEntries() {
 
   useEffect(() => {
     fetchEntries();
-  }, [activeWorkspaceId, mealTypeFilter]);
+  }, [activeWorkspaceId, mealTypeFilter, selectedMonth, selectedYear]);
 
   const handleDelete = async (entryId) => {
     if (!window.confirm('Are you sure you want to delete this meal entry? This action will be recorded in the activity log.')) {
@@ -78,22 +92,73 @@ export function MealEntries() {
       </div>
 
       <Card>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Filter size={16} style={{ color: 'var(--text-muted)' }} />
-            <span style={{ fontSize: '0.85rem', fontWeight: '500' }}>Filter Meal Type:</span>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-muted)', fontWeight: '500', fontSize: '0.85rem' }}>
+              <Filter size={16} />
+              <span>Filter:</span>
+            </div>
+
+            {/* Month Selector */}
+            <select
+              className="select"
+              style={{ width: 'auto', minWidth: '130px' }}
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+            >
+              <option value="">All Months</option>
+              {monthNames.map((m, idx) => (
+                <option key={idx + 1} value={idx + 1}>
+                  {m}
+                </option>
+              ))}
+            </select>
+
+            {/* Year Selector */}
+            <select
+              className="select"
+              style={{ width: 'auto', minWidth: '105px' }}
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(e.target.value)}
+            >
+              <option value="">All Years</option>
+              <option value="2024">2024</option>
+              <option value="2025">2025</option>
+              <option value="2026">2026</option>
+              <option value="2027">2027</option>
+            </select>
+
+            {/* Meal Type Selector */}
+            <select
+              className="select"
+              style={{ width: 'auto', minWidth: '130px' }}
+              value={mealTypeFilter}
+              onChange={(e) => setMealTypeFilter(e.target.value)}
+            >
+              <option value="">All Meal Types</option>
+              <option value="MORNING">Morning Only</option>
+              <option value="NIGHT">Night Only</option>
+            </select>
+
+            {(selectedMonth || selectedYear || mealTypeFilter) && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  setSelectedMonth('');
+                  setSelectedYear('');
+                  setMealTypeFilter('');
+                }}
+                style={{ fontSize: '0.78rem', padding: '0.3rem 0.55rem' }}
+              >
+                <X size={14} /> Clear
+              </Button>
+            )}
           </div>
 
-          <select
-            className="select"
-            style={{ width: 'auto', minWidth: '150px' }}
-            value={mealTypeFilter}
-            onChange={(e) => setMealTypeFilter(e.target.value)}
-          >
-            <option value="">All Meals</option>
-            <option value="MORNING">Morning Only</option>
-            <option value="NIGHT">Night Only</option>
-          </select>
+          <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontWeight: '500' }}>
+            Showing {entries.length} {entries.length === 1 ? 'record' : 'records'}
+          </div>
         </div>
       </Card>
 

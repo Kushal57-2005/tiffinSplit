@@ -11,14 +11,20 @@ router.use('/workspaces', authenticateUser);
 // List meal entries
 router.get('/workspaces/:workspaceId/entries', verifyWorkspaceMember, async (req, res) => {
   try {
-    const { startDate, endDate, mealType, friendId } = req.query;
+    const { month, year, startDate, endDate, mealType, friendId } = req.query;
     const where = { workspaceId: req.workspaceId };
 
     if (mealType) {
       where.mealType = mealType;
     }
 
-    if (startDate || endDate) {
+    if (month && year) {
+      const m = parseInt(month);
+      const y = parseInt(year);
+      const start = new Date(Date.UTC(y, m - 1, 1));
+      const end = new Date(Date.UTC(y, m, 0, 23, 59, 59, 999));
+      where.entryDate = { gte: start, lte: end };
+    } else if (startDate || endDate) {
       where.entryDate = {};
       if (startDate) where.entryDate.gte = new Date(startDate);
       if (endDate) where.entryDate.lte = new Date(endDate);

@@ -42,8 +42,13 @@ router.use('/workspaces', authenticateUser);
 // List all generated monthly invoices for active workspace
 router.get('/workspaces/:workspaceId/invoices', verifyWorkspaceMember, async (req, res) => {
   try {
+    const { month, year } = req.query;
+    const where = { workspaceId: req.workspaceId };
+    if (month) where.month = parseInt(month);
+    if (year) where.year = parseInt(year);
+
     const invoices = await prisma.monthlyInvoice.findMany({
-      where: { workspaceId: req.workspaceId },
+      where,
       include: {
         friend: { select: { id: true, fullName: true, shortCode: true, email: true, phone: true } },
         generatedBy: { select: { id: true, name: true, email: true } },

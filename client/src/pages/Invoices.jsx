@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Receipt, FileSpreadsheet, Eye, Mail, Send, CheckCircle, AlertCircle, X, CreditCard } from 'lucide-react';
+import { Receipt, FileSpreadsheet, Eye, Mail, Send, CheckCircle, AlertCircle, X, CreditCard, Filter } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { Card } from '../components/UI/Card';
 import { Button } from '../components/UI/Button';
 import { Badge } from '../components/UI/Badge';
 import { EmptyState } from '../components/UI/EmptyState';
@@ -13,6 +14,11 @@ export function Invoices() {
 
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Month & Year Filter state
+  const [selectedMonth, setSelectedMonth] = useState('');
+  const [selectedYear, setSelectedYear] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState('');
 
   // Single Email modal state
   const [singleEmailModal, setSingleEmailModal] = useState(null);
@@ -40,7 +46,13 @@ export function Invoices() {
     }
     setLoading(true);
     try {
-      const data = await apiFetch(`/workspaces/${activeWorkspaceId}/invoices`);
+      let url = `/workspaces/${activeWorkspaceId}/invoices`;
+      const params = new URLSearchParams();
+      if (selectedMonth) params.append('month', selectedMonth);
+      if (selectedYear) params.append('year', selectedYear);
+      if (params.toString()) url += `?${params.toString()}`;
+
+      const data = await apiFetch(url);
       setInvoices(data);
     } catch (err) {
       console.error('Failed to fetch invoices:', err);
@@ -51,12 +63,21 @@ export function Invoices() {
 
   useEffect(() => {
     fetchInvoices();
-  }, [activeWorkspaceId]);
+  }, [activeWorkspaceId, selectedMonth, selectedYear]);
 
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
+
+  const filteredInvoices = invoices.filter((inv) => {
+    if (selectedMonth && String(inv.month) !== String(selectedMonth)) return false;
+    if (selectedYear && String(inv.year) !== String(selectedYear)) return false;
+    if (selectedStatus === 'PAID' && inv.status !== 'PAID' && inv.amountDue > 0) return false;
+    if (selectedStatus === 'UNPAID' && (inv.status === 'PAID' || inv.amountDue === 0)) return false;
+    if (selectedStatus === 'GENERATED' && inv.status !== 'GENERATED') return false;
+    return true;
+  });
 
   const handleOpenSingleModal = (inv) => {
     setSingleEmailModal(inv);
@@ -205,6 +226,79 @@ export function Invoices() {
         </div>
       )}
 
+      {/* Month, Year & Status Filter Controls */}
+      <Card>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-muted)', fontWeight: '500', fontSize: '0.85rem', marginRight: '0.25rem' }}>
+              <Filter size={16} />
+              <span>Filter:</span>
+            </div>
+
+            {/* Month Selector */}
+            <select
+              className="select"
+              style={{ width: 'auto', minWidth: '130px' }}
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+            >
+              <option value="">All Months</option>
+              {monthNames.map((m, idx) => (
+                <option key={idx + 1} value={idx + 1}>
+                  {m}
+                </option>
+              ))}
+            </select>
+
+            {/* Year Selector */}
+            <select
+              className="select"
+              style={{ width: 'auto', minWidth: '105px' }}
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(e.target.value)}
+            >
+              <option value="">All Years</option>
+              <option value="2024">2024</option>
+              <option value="2025">2025</option>
+              <option value="2026">2026</option>
+              <option value="2027">2027</option>
+            </select>
+
+            {/* Status Selector */}
+            <select
+              className="select"
+              style={{ width: 'auto', minWidth: '125px' }}
+              value={selectedStatus}
+              onChange={(e) => setSelectedStatus(e.target.value)}
+            >
+              <option value="">All Statuses</option>
+              <option value="PAID">Paid Only</option>
+              <option value="UNPAID">Due / Unpaid</option>
+              <option value="GENERATED">Generated</option>
+            </select>
+
+            {(selectedMonth || selectedYear || selectedStatus) && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  setSelectedMonth('');
+                  setSelectedYear('');
+                  setSelectedStatus('');
+                }}
+                style={{ fontSize: '0.78rem', padding: '0.3rem 0.55rem' }}
+              >
+                <X size={14} /> Clear
+              </Button>
+            )}
+          </div>
+
+          <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontWeight: '500' }}>
+            Showing {filteredInvoices.length} of {invoices.length} invoices
+          </div>
+        </div>
+      </Card>
+
       {loading ? (
         <LoadingSpinner message="Fetching monthly invoices..." />
       ) : invoices.length === 0 ? (
@@ -216,6 +310,25 @@ export function Invoices() {
             <Button onClick={() => navigate('/invoices/generate')}>
               <FileSpreadsheet size={16} />
               <span>Generate First Invoice</span>
+            </Button>
+          }
+        />
+      ) : filteredInvoices.length === 0 ? (
+        <EmptyState
+          icon={Filter}
+          title="No invoices match selected filters"
+          description={`No invoices found matching Month: ${selectedMonth ? monthNames[selectedMonth - 1] : 'All'}, Year: ${selectedYear || 'All'}, Status: ${selectedStatus || 'All'}.`}
+          action={
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setSelectedMonth('');
+                setSelectedYear('');
+                setSelectedStatus('');
+              }}
+            >
+              <X size={16} />
+              <span>Reset Filters</span>
             </Button>
           }
         />
@@ -238,7 +351,7 @@ export function Invoices() {
                 </tr>
               </thead>
               <tbody>
-                {invoices.map((inv) => {
+                {filteredInvoices.map((inv) => {
                   const invRef = `INV-${inv.year}-${String(inv.month).padStart(2, '0')}-${inv.friend.shortCode}`;
                   const isPaid = inv.status === 'PAID' || inv.amountDue === 0;
 
@@ -327,7 +440,7 @@ export function Invoices() {
 
           {/* Mobile Cards View */}
           <div className="mobile-only-card" style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-            {invoices.map((inv) => {
+            {filteredInvoices.map((inv) => {
               const invRef = `INV-${inv.year}-${String(inv.month).padStart(2, '0')}-${inv.friend.shortCode}`;
               const isPaid = inv.status === 'PAID' || inv.amountDue === 0;
 
