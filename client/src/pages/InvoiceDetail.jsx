@@ -6,7 +6,7 @@ import { Button } from '../components/UI/Button';
 import { Badge } from '../components/UI/Badge';
 import { Modal } from '../components/UI/Modal';
 import { LoadingSpinner } from '../components/UI/LoadingSpinner';
-import { normalizePhoneNumber, formatWhatsAppBillMessage, createWhatsAppUrl } from '../utils/whatsapp';
+import { normalizePhoneNumber, formatWhatsAppBillMessage, createWhatsAppUrl, getPublicAppUrl } from '../utils/whatsapp';
 
 export function InvoiceDetail() {
   const { invoiceId } = useParams();
@@ -111,8 +111,7 @@ export function InvoiceDetail() {
     const monthName = monthNames[invoice.month - 1];
     const year = invoice.year;
     const amount = invoice.amountDue > 0 ? invoice.amountDue : invoice.totalAmount;
-    const baseUrl = window.location.origin;
-    const invoiceUrl = `${baseUrl}/invoices/view/${invoice.id}`;
+    const invoiceUrl = getPublicAppUrl(`/invoices/view/${invoice.id}`);
 
     const message = formatWhatsAppBillMessage({
       friendName: name,

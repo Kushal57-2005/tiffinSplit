@@ -1,19 +1,24 @@
-import express from 'express';
-import prisma from '../db.js';
-import { authenticateUser } from '../middleware/auth.js';
-import { verifyWorkspaceMember, verifyWorkspaceHead } from '../middleware/workspace.js';
-import { logActivity } from '../utils/activityLogger.js';
+import express from "express";
+import prisma from "../db.js";
+import { authenticateUser } from "../middleware/auth.js";
+import {
+  verifyWorkspaceMember,
+  verifyWorkspaceHead,
+} from "../middleware/workspace.js";
+import { logActivity } from "../utils/activityLogger.js";
 
 const router = express.Router();
 
 // Public quick action link endpoint for Head (called directly from Gmail email buttons without requiring redirect to app form)
-router.get('/payments/quick-action', async (req, res) => {
+router.get("/payments/quick-action", async (req, res) => {
   try {
     const { action, paymentId } = req.query;
-    const clientUrl = (process.env.CLIENT_URL || 'https://tiffin-split.vercel.app').trim();
+    const clientUrl = (
+      process.env.CLIENT_URL || "https://tiffin-split.vercel.app"
+    ).trim();
 
     if (!paymentId) {
-      return res.status(400).send('Invalid payment request: missing paymentId');
+      return res.status(400).send("Invalid payment request: missing paymentId");
     }
 
     const payment = await prisma.payment.findUnique({
@@ -21,8 +26,8 @@ router.get('/payments/quick-action', async (req, res) => {
       include: {
         friend: { select: { fullName: true, shortCode: true, email: true } },
         invoice: true,
-        workspace: { include: { setting: true } }
-      }
+        workspace: { include: { setting: true } },
+      },
     });
 
     if (!payment) {
@@ -34,7 +39,7 @@ router.get('/payments/quick-action', async (req, res) => {
       `);
     }
 
-    if (payment.paymentStatus !== 'PENDING') {
+    if (payment.paymentStatus !== "PENDING") {
       return res.send(`
         <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 60px auto; padding: 30px; text-align: center; border: 1px solid #E5E0DA; border-radius: 16px; background-color: #FAFAF8;">
           <h2 style="color: #4A4A4A;">Payment Already Processed</h2>
@@ -44,36 +49,39 @@ router.get('/payments/quick-action', async (req, res) => {
       `);
     }
 
-    if (action === 'verify') {
+    if (action === "verify") {
       // 1. Mark payment as SUCCESS
       await prisma.$transaction(async (tx) => {
         await tx.payment.update({
           where: { id: paymentId },
           data: {
-            paymentStatus: 'SUCCESS',
-            verifiedAt: new Date()
-          }
+            paymentStatus: "SUCCESS",
+            verifiedAt: new Date(),
+          },
         });
 
         if (payment.invoiceId) {
           const allSuccessPayments = await tx.payment.findMany({
-            where: { invoiceId: payment.invoiceId, paymentStatus: 'SUCCESS' }
+            where: { invoiceId: payment.invoiceId, paymentStatus: "SUCCESS" },
           });
-          const totalPaid = allSuccessPayments.reduce((acc, p) => acc + p.amount, 0);
+          const totalPaid = allSuccessPayments.reduce(
+            (acc, p) => acc + p.amount,
+            0,
+          );
 
           const inv = await tx.monthlyInvoice.findUnique({
-            where: { id: payment.invoiceId }
+            where: { id: payment.invoiceId },
           });
 
           if (inv) {
             const due = Math.max(0, inv.totalAmount - totalPaid);
-            let status = 'GENERATED';
-            if (totalPaid >= inv.totalAmount) status = 'PAID';
-            else if (totalPaid > 0) status = 'PARTIALLY_PAID';
+            let status = "GENERATED";
+            if (totalPaid >= inv.totalAmount) status = "PAID";
+            else if (totalPaid > 0) status = "PARTIALLY_PAID";
 
             await tx.monthlyInvoice.update({
               where: { id: payment.invoiceId },
-              data: { amountPaid: totalPaid, amountDue: due, status }
+              data: { amountPaid: totalPaid, amountDue: due, status },
             });
           }
         }
@@ -81,10 +89,10 @@ router.get('/payments/quick-action', async (req, res) => {
         await logActivity(tx, {
           workspaceId: payment.workspaceId,
           userId: payment.recordedById,
-          action: 'PAYMENT_VERIFIED',
-          entityType: 'Payment',
+          action: "PAYMENT_VERIFIED",
+          entityType: "Payment",
           entityId: payment.id,
-          message: `Verified payment of ₹${payment.amount.toLocaleString()} for ${payment.friend.fullName} via direct email button`
+          message: `Verified payment of ₹${payment.amount.toLocaleString()} for ${payment.friend.fullName} via direct email button`,
         });
       });
 
@@ -100,32 +108,30 @@ router.get('/payments/quick-action', async (req, res) => {
           </a>
         </div>
       `);
-    } else if (action === 'reject') {
-      const rejectionReason = 'Payment not received in bank/UPI account';
+    } else if (action === "reject") {
+      const rejectionReason = "Payment not received in bank/UPI account";
 
       await prisma.payment.update({
         where: { id: paymentId },
         data: {
-          paymentStatus: 'REJECTED',
+          paymentStatus: "REJECTED",
           rejectionReason,
-          updatedAt: new Date()
-        }
+          updatedAt: new Date(),
+        },
       });
 
       await logActivity(prisma, {
         workspaceId: payment.workspaceId,
         userId: payment.recordedById,
-        action: 'PAYMENT_REJECTED',
-        entityType: 'Payment',
+        action: "PAYMENT_REJECTED",
+        entityType: "Payment",
         entityId: payment.id,
-        message: `Rejected payment report of ₹${payment.amount.toLocaleString()} for ${payment.friend.fullName} via direct email button`
+        message: `Rejected payment report of ₹${payment.amount.toLocaleString()} for ${payment.friend.fullName} via direct email button`,
       });
 
       const invRef = payment.invoice
-        ? `INV-${payment.invoice.year}-${String(payment.invoice.month).padStart(2, '0')}-${payment.friend.shortCode}`
-        : 'N/A';
-
-
+        ? `INV-${payment.invoice.year}-${String(payment.invoice.month).padStart(2, "0")}-${payment.friend.shortCode}`
+        : "N/A";
 
       return res.send(`
         <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 60px auto; padding: 32px 24px; text-align: center; border: 1px solid #FFCDD2; border-radius: 16px; background-color: #FFEBEE;">
@@ -140,415 +146,536 @@ router.get('/payments/quick-action', async (req, res) => {
         </div>
       `);
     } else {
-      return res.status(400).send('Invalid action type');
+      return res.status(400).send("Invalid action type");
     }
   } catch (err) {
-    console.error('Quick action payment error:', err);
-    return res.status(500).send('Server error processing payment action');
+    console.error("Quick action payment error:", err);
+    return res.status(500).send("Server error processing payment action");
   }
 });
 
-router.use('/workspaces', authenticateUser);
+router.use("/workspaces", authenticateUser);
 
 // List payments
-router.get('/workspaces/:workspaceId/payments', verifyWorkspaceMember, async (req, res) => {
-  try {
-    const { friendId, invoiceId, status } = req.query;
+router.get(
+  "/workspaces/:workspaceId/payments",
+  verifyWorkspaceMember,
+  async (req, res) => {
+    try {
+      const { friendId, invoiceId, status } = req.query;
 
-    const where = { workspaceId: req.workspaceId };
-    if (friendId) where.friendId = friendId;
-    if (invoiceId) where.invoiceId = invoiceId;
-    if (status) where.paymentStatus = status;
+      const where = { workspaceId: req.workspaceId };
+      if (friendId) where.friendId = friendId;
+      if (invoiceId) where.invoiceId = invoiceId;
+      if (status) where.paymentStatus = status;
 
-    const payments = await prisma.payment.findMany({
-      where,
-      include: {
-        friend: { select: { id: true, fullName: true, shortCode: true, email: true } },
-        invoice: { select: { id: true, month: true, year: true, totalAmount: true, amountDue: true, status: true } },
-        recordedBy: { select: { id: true, name: true, email: true } },
-        verifiedBy: { select: { id: true, name: true, email: true } }
-      },
-      orderBy: { createdAt: 'desc' }
-    });
+      const payments = await prisma.payment.findMany({
+        where,
+        include: {
+          friend: {
+            select: { id: true, fullName: true, shortCode: true, email: true },
+          },
+          invoice: {
+            select: {
+              id: true,
+              month: true,
+              year: true,
+              totalAmount: true,
+              amountDue: true,
+              status: true,
+            },
+          },
+          recordedBy: { select: { id: true, name: true, email: true } },
+          verifiedBy: { select: { id: true, name: true, email: true } },
+        },
+        orderBy: { createdAt: "desc" },
+      });
 
-    return res.json(payments);
-  } catch (err) {
-    return res.status(500).json({ error: 'Failed to fetch payments' });
-  }
-});
+      return res.json(payments);
+    } catch (err) {
+      return res.status(500).json({ error: "Failed to fetch payments" });
+    }
+  },
+);
 
 // GET Pending payment verification requests (Head view)
-router.get('/workspaces/:workspaceId/payments/pending', verifyWorkspaceMember, async (req, res) => {
-  try {
-    const pendingPayments = await prisma.payment.findMany({
-      where: {
-        workspaceId: req.workspaceId,
-        paymentStatus: 'PENDING'
-      },
-      include: {
-        friend: { select: { id: true, fullName: true, shortCode: true, email: true, phone: true } },
-        invoice: { select: { id: true, month: true, year: true, totalAmount: true, amountDue: true, amountPaid: true, status: true } },
-        recordedBy: { select: { id: true, name: true, email: true } }
-      },
-      orderBy: { createdAt: 'desc' }
-    });
-
-    return res.json(pendingPayments);
-  } catch (err) {
-    return res.status(500).json({ error: 'Failed to fetch pending payment verifications' });
-  }
-});
-
-// ROOMMATE: Report Payment ("I Paid") -> Status set to PENDING (NO invoice due/paid changes)
-router.post('/workspaces/:workspaceId/payments/report', verifyWorkspaceMember, async (req, res) => {
-  try {
-    const { friendId, invoiceId, amount, paymentMethod, transactionRef, notes, paidAt } = req.body;
-
-    const parsedAmount = parseFloat(amount);
-    if (!friendId || isNaN(parsedAmount) || parsedAmount <= 0) {
-      return res.status(400).json({ error: 'Friend ID and a positive payment amount are required' });
-    }
-
-    // If invoiceId provided, validate invoice exists and check outstanding due
-    let targetInvoice = null;
-    if (invoiceId) {
-      targetInvoice = await prisma.monthlyInvoice.findFirst({
-        where: { id: invoiceId, workspaceId: req.workspaceId },
-        include: { friend: true }
-      });
-
-      if (!targetInvoice) {
-        return res.status(404).json({ error: 'Invoice not found in this workspace' });
-      }
-
-      if (parsedAmount > targetInvoice.amountDue) {
-        return res.status(400).json({
-          error: `Reported payment of ₹${parsedAmount} exceeds current invoice amount due of ₹${targetInvoice.amountDue}`
-        });
-      }
-
-      // PREVENT DUPLICATE REPORTS: Check for an existing PENDING payment report for the same invoice & amount
-      const existingPending = await prisma.payment.findFirst({
+router.get(
+  "/workspaces/:workspaceId/payments/pending",
+  verifyWorkspaceMember,
+  async (req, res) => {
+    try {
+      const pendingPayments = await prisma.payment.findMany({
         where: {
-          invoiceId,
-          amount: parsedAmount,
-          paymentStatus: 'PENDING'
-        }
-      });
-
-      if (existingPending) {
-        return res.status(400).json({
-          error: 'Payment verification already pending. You already reported this payment. Please wait for the Household Head to verify it.'
-        });
-      }
-    }
-
-    const method = (paymentMethod || 'UPI').toUpperCase();
-    const reportedTime = new Date();
-
-    // Create PENDING Payment Record
-    const newPayment = await prisma.payment.create({
-      data: {
-        workspaceId: req.workspaceId,
-        friendId,
-        invoiceId: invoiceId || null,
-        amount: parsedAmount,
-        paymentMethod: method,
-        paymentStatus: 'PENDING',
-        transactionRef: transactionRef ? transactionRef.trim() : null,
-        notes: notes ? notes.trim() : null,
-        paidAt: paidAt ? new Date(paidAt) : reportedTime,
-        reportedAt: reportedTime,
-        recordedById: req.user.id
-      },
-      include: {
-        friend: { select: { fullName: true, shortCode: true, email: true } },
-        invoice: { select: { id: true, month: true, year: true, totalAmount: true, amountDue: true } }
-      }
-    });
-
-    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-    const invRef = targetInvoice
-      ? `INV-${targetInvoice.year}-${String(targetInvoice.month).padStart(2, '0')}-${newPayment.friend.shortCode}`
-      : 'N/A';
-
-    // Log PAYMENT_REPORTED Activity
-    await logActivity(prisma, {
-      workspaceId: req.workspaceId,
-      userId: req.user.id,
-      action: 'PAYMENT_REPORTED',
-      entityType: 'Payment',
-      entityId: newPayment.id,
-      message: `${newPayment.friend.fullName} reported a payment of ₹${parsedAmount.toLocaleString()} for invoice ${invRef}`
-    });
-
-    // Find Head user for workspace email dispatch
-    const headMember = await prisma.workspaceMember.findFirst({
-      where: { workspaceId: req.workspaceId, role: 'HEAD' },
-      include: { user: true }
-    });
-
-    const headEmailAddress = (headMember && headMember.user && headMember.user.email)
-      ? headMember.user.email
-      : (req.user && req.user.email)
-      ? req.user.email
-      : null;
-
-    const headNameString = (headMember && headMember.user && headMember.user.name)
-      ? headMember.user.name
-      : 'Household Head';
-
-    const apiUrl = process.env.API_URL || 'http://localhost:5000/api';
-    const verifyUrl = `${apiUrl}/payments/quick-action?action=verify&paymentId=${newPayment.id}`;
-    const rejectUrl = `${apiUrl}/payments/quick-action?action=reject&paymentId=${newPayment.id}`;
-
-
-
-    return res.status(201).json(newPayment);
-  } catch (err) {
-    console.error('Report payment error:', err);
-    return res.status(500).json({ error: 'Failed to report payment' });
-  }
-});
-
-// HEAD: Verify & Mark Paid -> Status set to SUCCESS, update invoice.amountPaid & amountDue
-router.post('/workspaces/:workspaceId/payments/:paymentId/verify', verifyWorkspaceHead, async (req, res) => {
-  try {
-    const { paymentId } = req.params;
-
-    const payment = await prisma.payment.findFirst({
-      where: { id: paymentId, workspaceId: req.workspaceId },
-      include: {
-        friend: { select: { fullName: true, shortCode: true, email: true } },
-        invoice: true
-      }
-    });
-
-    if (!payment) {
-      return res.status(404).json({ error: 'Payment record not found' });
-    }
-
-    if (payment.paymentStatus !== 'PENDING') {
-      return res.status(400).json({ error: `Payment is already in '${payment.paymentStatus}' status` });
-    }
-
-    const updatedPayment = await prisma.$transaction(async (tx) => {
-      // 1. Mark payment as SUCCESS
-      const verified = await tx.payment.update({
-        where: { id: paymentId },
-        data: {
-          paymentStatus: 'SUCCESS',
-          verifiedAt: new Date(),
-          verifiedById: req.user.id
+          workspaceId: req.workspaceId,
+          paymentStatus: "PENDING",
         },
         include: {
-          friend: { select: { fullName: true, shortCode: true } },
-          invoice: true
-        }
+          friend: {
+            select: {
+              id: true,
+              fullName: true,
+              shortCode: true,
+              email: true,
+              phone: true,
+            },
+          },
+          invoice: {
+            select: {
+              id: true,
+              month: true,
+              year: true,
+              totalAmount: true,
+              amountDue: true,
+              amountPaid: true,
+              status: true,
+            },
+          },
+          recordedBy: { select: { id: true, name: true, email: true } },
+        },
+        orderBy: { createdAt: "desc" },
       });
 
-      // 2. Update Invoice totals if invoiceId linked
-      if (verified.invoiceId) {
-        const allSuccessPayments = await tx.payment.findMany({
-          where: { invoiceId: verified.invoiceId, paymentStatus: 'SUCCESS' }
+      return res.json(pendingPayments);
+    } catch (err) {
+      return res
+        .status(500)
+        .json({ error: "Failed to fetch pending payment verifications" });
+    }
+  },
+);
+
+// ROOMMATE: Report Payment ("I Paid") -> Status set to PENDING (NO invoice due/paid changes)
+router.post(
+  "/workspaces/:workspaceId/payments/report",
+  verifyWorkspaceMember,
+  async (req, res) => {
+    try {
+      const {
+        friendId,
+        invoiceId,
+        amount,
+        paymentMethod,
+        transactionRef,
+        notes,
+        paidAt,
+      } = req.body;
+
+      const parsedAmount = parseFloat(amount);
+      if (!friendId || isNaN(parsedAmount) || parsedAmount <= 0) {
+        return res.status(400).json({
+          error: "Friend ID and a positive payment amount are required",
+        });
+      }
+
+      // If invoiceId provided, validate invoice exists and check outstanding due
+      let targetInvoice = null;
+      if (invoiceId) {
+        targetInvoice = await prisma.monthlyInvoice.findFirst({
+          where: { id: invoiceId, workspaceId: req.workspaceId },
+          include: { friend: true },
         });
 
-        const totalPaid = allSuccessPayments.reduce((acc, p) => acc + p.amount, 0);
+        if (!targetInvoice) {
+          return res
+            .status(404)
+            .json({ error: "Invoice not found in this workspace" });
+        }
 
-        const inv = await tx.monthlyInvoice.findUnique({
-          where: { id: verified.invoiceId }
+        if (parsedAmount > targetInvoice.amountDue) {
+          return res.status(400).json({
+            error: `Reported payment of ₹${parsedAmount} exceeds current invoice amount due of ₹${targetInvoice.amountDue}`,
+          });
+        }
+
+        // PREVENT DUPLICATE REPORTS: Check for an existing PENDING payment report for the same invoice & amount
+        const existingPending = await prisma.payment.findFirst({
+          where: {
+            invoiceId,
+            amount: parsedAmount,
+            paymentStatus: "PENDING",
+          },
         });
 
-        if (inv) {
-          const due = Math.max(0, inv.totalAmount - totalPaid);
-          let status = 'GENERATED';
-          if (totalPaid >= inv.totalAmount) status = 'PAID';
-          else if (totalPaid > 0) status = 'PARTIALLY_PAID';
-
-          await tx.monthlyInvoice.update({
-            where: { id: verified.invoiceId },
-            data: { amountPaid: totalPaid, amountDue: due, status }
+        if (existingPending) {
+          return res.status(400).json({
+            error:
+              "Payment verification already pending. You already reported this payment. Please wait for the Household Head to verify it.",
           });
         }
       }
 
-      // 3. Log PAYMENT_VERIFIED Activity
-      await logActivity(tx, {
-        workspaceId: req.workspaceId,
-        userId: req.user.id,
-        action: 'PAYMENT_VERIFIED',
-        entityType: 'Payment',
-        entityId: verified.id,
-        message: `${req.user.name} verified a payment of ₹${verified.amount.toLocaleString()} for ${verified.friend.fullName}`
-      });
+      const method = (paymentMethod || "UPI").toUpperCase();
+      const reportedTime = new Date();
 
-      return verified;
-    });
-
-    return res.json(updatedPayment);
-  } catch (err) {
-    console.error('Verify payment error:', err);
-    return res.status(500).json({ error: 'Failed to verify payment' });
-  }
-});
-
-// HEAD: Payment Not Received -> Status set to REJECTED (NO invoice due/paid changes, sends email to roommate)
-router.post('/workspaces/:workspaceId/payments/:paymentId/reject', verifyWorkspaceHead, async (req, res) => {
-  try {
-    const { paymentId } = req.params;
-    const { reason } = req.body;
-
-    const payment = await prisma.payment.findFirst({
-      where: { id: paymentId, workspaceId: req.workspaceId },
-      include: {
-        friend: true,
-        invoice: true
-      }
-    });
-
-    if (!payment) {
-      return res.status(404).json({ error: 'Payment record not found' });
-    }
-
-    if (payment.paymentStatus !== 'PENDING') {
-      return res.status(400).json({ error: `Payment is already in '${payment.paymentStatus}' status` });
-    }
-
-    const rejectionReason = reason || 'Payment not received in bank/UPI account';
-
-    const rejectedPayment = await prisma.payment.update({
-      where: { id: paymentId },
-      data: {
-        paymentStatus: 'REJECTED',
-        rejectionReason,
-        verifiedById: req.user.id,
-        updatedAt: new Date()
-      },
-      include: {
-        friend: true,
-        invoice: true
-      }
-    });
-
-    // Log PAYMENT_REJECTED Activity
-    await logActivity(prisma, {
-      workspaceId: req.workspaceId,
-      userId: req.user.id,
-      action: 'PAYMENT_REJECTED',
-      entityType: 'Payment',
-      entityId: rejectedPayment.id,
-      message: `${req.user.name} rejected a payment report of ₹${rejectedPayment.amount.toLocaleString()} for ${rejectedPayment.friend.fullName}`
-    });
-
-    // Fetch workspace settings for UPI details
-    const settings = await prisma.workspaceSetting.findUnique({
-      where: { workspaceId: req.workspaceId }
-    });
-
-    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-    const invRef = payment.invoice
-      ? `INV-${payment.invoice.year}-${String(payment.invoice.month).padStart(2, '0')}-${payment.friend.shortCode}`
-      : 'N/A';
-
-    const clientUrl = (process.env.CLIENT_URL || 'https://tiffin-split.vercel.app').trim();
-
-
-
-    return res.json(rejectedPayment);
-  } catch (err) {
-    console.error('Reject payment error:', err);
-    return res.status(500).json({ error: 'Failed to reject payment' });
-  }
-});
-
-// Direct Record Payment (Head bypass for manual instant cash entry)
-router.post('/workspaces/:workspaceId/payments', verifyWorkspaceMember, async (req, res) => {
-  try {
-    const { friendId, invoiceId, amount, paymentMethod, transactionRef, notes, paidAt } = req.body;
-
-    const parsedAmount = parseFloat(amount);
-    if (!friendId || isNaN(parsedAmount) || parsedAmount <= 0) {
-      return res.status(400).json({ error: 'Friend ID and a positive payment amount are required' });
-    }
-
-    const method = (paymentMethod || 'UPI').toUpperCase();
-
-    const payment = await prisma.$transaction(async (tx) => {
-      let targetInvoiceId = invoiceId;
-      if (!targetInvoiceId) {
-        const openInvoice = await tx.monthlyInvoice.findFirst({
-          where: {
-            workspaceId: req.workspaceId,
-            friendId,
-            status: { in: ['GENERATED', 'PARTIALLY_PAID', 'SENT'] }
-          },
-          orderBy: { createdAt: 'desc' }
-        });
-        if (openInvoice) targetInvoiceId = openInvoice.id;
-      }
-
-      const newPayment = await tx.payment.create({
+      // Create PENDING Payment Record
+      const newPayment = await prisma.payment.create({
         data: {
           workspaceId: req.workspaceId,
           friendId,
-          invoiceId: targetInvoiceId || null,
+          invoiceId: invoiceId || null,
           amount: parsedAmount,
           paymentMethod: method,
-          paymentStatus: 'SUCCESS',
+          paymentStatus: "PENDING",
           transactionRef: transactionRef ? transactionRef.trim() : null,
           notes: notes ? notes.trim() : null,
-          paidAt: paidAt ? new Date(paidAt) : new Date(),
-          verifiedAt: new Date(),
+          paidAt: paidAt ? new Date(paidAt) : reportedTime,
+          reportedAt: reportedTime,
           recordedById: req.user.id,
-          verifiedById: req.user.id
         },
         include: {
-          friend: { select: { fullName: true, shortCode: true } },
-          invoice: { select: { month: true, year: true, totalAmount: true } }
-        }
+          friend: { select: { fullName: true, shortCode: true, email: true } },
+          invoice: {
+            select: {
+              id: true,
+              month: true,
+              year: true,
+              totalAmount: true,
+              amountDue: true,
+            },
+          },
+        },
       });
 
-      if (targetInvoiceId) {
-        const allPayments = await tx.payment.findMany({
-          where: { invoiceId: targetInvoiceId, paymentStatus: 'SUCCESS' }
-        });
+      const monthNames = [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+      ];
+      const invRef = targetInvoice
+        ? `INV-${targetInvoice.year}-${String(targetInvoice.month).padStart(2, "0")}-${newPayment.friend.shortCode}`
+        : "N/A";
 
-        const totalPaid = allPayments.reduce((acc, p) => acc + p.amount, 0);
-
-        const inv = await tx.monthlyInvoice.findUnique({
-          where: { id: targetInvoiceId }
-        });
-
-        if (inv) {
-          const due = Math.max(0, inv.totalAmount - totalPaid);
-          let status = 'GENERATED';
-          if (totalPaid >= inv.totalAmount) status = 'PAID';
-          else if (totalPaid > 0) status = 'PARTIALLY_PAID';
-
-          await tx.monthlyInvoice.update({
-            where: { id: targetInvoiceId },
-            data: { amountPaid: totalPaid, amountDue: due, status }
-          });
-        }
-      }
-
-      await logActivity(tx, {
+      // Log PAYMENT_REPORTED Activity
+      await logActivity(prisma, {
         workspaceId: req.workspaceId,
         userId: req.user.id,
-        action: 'PAYMENT_RECORDED',
-        entityType: 'Payment',
+        action: "PAYMENT_REPORTED",
+        entityType: "Payment",
         entityId: newPayment.id,
-        message: `${req.user.name} recorded ₹${parsedAmount.toLocaleString()} ${method} payment for ${newPayment.friend.shortCode}`
+        message: `${newPayment.friend.fullName} reported a payment of ₹${parsedAmount.toLocaleString()} for invoice ${invRef}`,
       });
 
-      return newPayment;
-    });
+      // Find Head user for workspace email dispatch
+      const headMember = await prisma.workspaceMember.findFirst({
+        where: { workspaceId: req.workspaceId, role: "HEAD" },
+        include: { user: true },
+      });
 
-    return res.status(201).json(payment);
-  } catch (err) {
-    console.error('Record payment error:', err);
-    return res.status(500).json({ error: 'Failed to record payment' });
-  }
-});
+      const headEmailAddress =
+        headMember && headMember.user && headMember.user.email
+          ? headMember.user.email
+          : req.user && req.user.email
+            ? req.user.email
+            : null;
+
+      const headNameString =
+        headMember && headMember.user && headMember.user.name
+          ? headMember.user.name
+          : "Household Head";
+
+      const apiUrl =
+        process.env.API_URL || "https://tiffin-split.vercel.app/api";
+      const verifyUrl = `${apiUrl}/payments/quick-action?action=verify&paymentId=${newPayment.id}`;
+      const rejectUrl = `${apiUrl}/payments/quick-action?action=reject&paymentId=${newPayment.id}`;
+
+      return res.status(201).json(newPayment);
+    } catch (err) {
+      console.error("Report payment error:", err);
+      return res.status(500).json({ error: "Failed to report payment" });
+    }
+  },
+);
+
+// HEAD: Verify & Mark Paid -> Status set to SUCCESS, update invoice.amountPaid & amountDue
+router.post(
+  "/workspaces/:workspaceId/payments/:paymentId/verify",
+  verifyWorkspaceHead,
+  async (req, res) => {
+    try {
+      const { paymentId } = req.params;
+
+      const payment = await prisma.payment.findFirst({
+        where: { id: paymentId, workspaceId: req.workspaceId },
+        include: {
+          friend: { select: { fullName: true, shortCode: true, email: true } },
+          invoice: true,
+        },
+      });
+
+      if (!payment) {
+        return res.status(404).json({ error: "Payment record not found" });
+      }
+
+      if (payment.paymentStatus !== "PENDING") {
+        return res.status(400).json({
+          error: `Payment is already in '${payment.paymentStatus}' status`,
+        });
+      }
+
+      const updatedPayment = await prisma.$transaction(async (tx) => {
+        // 1. Mark payment as SUCCESS
+        const verified = await tx.payment.update({
+          where: { id: paymentId },
+          data: {
+            paymentStatus: "SUCCESS",
+            verifiedAt: new Date(),
+            verifiedById: req.user.id,
+          },
+          include: {
+            friend: { select: { fullName: true, shortCode: true } },
+            invoice: true,
+          },
+        });
+
+        // 2. Update Invoice totals if invoiceId linked
+        if (verified.invoiceId) {
+          const allSuccessPayments = await tx.payment.findMany({
+            where: { invoiceId: verified.invoiceId, paymentStatus: "SUCCESS" },
+          });
+
+          const totalPaid = allSuccessPayments.reduce(
+            (acc, p) => acc + p.amount,
+            0,
+          );
+
+          const inv = await tx.monthlyInvoice.findUnique({
+            where: { id: verified.invoiceId },
+          });
+
+          if (inv) {
+            const due = Math.max(0, inv.totalAmount - totalPaid);
+            let status = "GENERATED";
+            if (totalPaid >= inv.totalAmount) status = "PAID";
+            else if (totalPaid > 0) status = "PARTIALLY_PAID";
+
+            await tx.monthlyInvoice.update({
+              where: { id: verified.invoiceId },
+              data: { amountPaid: totalPaid, amountDue: due, status },
+            });
+          }
+        }
+
+        // 3. Log PAYMENT_VERIFIED Activity
+        await logActivity(tx, {
+          workspaceId: req.workspaceId,
+          userId: req.user.id,
+          action: "PAYMENT_VERIFIED",
+          entityType: "Payment",
+          entityId: verified.id,
+          message: `${req.user.name} verified a payment of ₹${verified.amount.toLocaleString()} for ${verified.friend.fullName}`,
+        });
+
+        return verified;
+      });
+
+      return res.json(updatedPayment);
+    } catch (err) {
+      console.error("Verify payment error:", err);
+      return res.status(500).json({ error: "Failed to verify payment" });
+    }
+  },
+);
+
+// HEAD: Payment Not Received -> Status set to REJECTED (NO invoice due/paid changes, sends email to roommate)
+router.post(
+  "/workspaces/:workspaceId/payments/:paymentId/reject",
+  verifyWorkspaceHead,
+  async (req, res) => {
+    try {
+      const { paymentId } = req.params;
+      const { reason } = req.body;
+
+      const payment = await prisma.payment.findFirst({
+        where: { id: paymentId, workspaceId: req.workspaceId },
+        include: {
+          friend: true,
+          invoice: true,
+        },
+      });
+
+      if (!payment) {
+        return res.status(404).json({ error: "Payment record not found" });
+      }
+
+      if (payment.paymentStatus !== "PENDING") {
+        return res.status(400).json({
+          error: `Payment is already in '${payment.paymentStatus}' status`,
+        });
+      }
+
+      const rejectionReason =
+        reason || "Payment not received in bank/UPI account";
+
+      const rejectedPayment = await prisma.payment.update({
+        where: { id: paymentId },
+        data: {
+          paymentStatus: "REJECTED",
+          rejectionReason,
+          verifiedById: req.user.id,
+          updatedAt: new Date(),
+        },
+        include: {
+          friend: true,
+          invoice: true,
+        },
+      });
+
+      // Log PAYMENT_REJECTED Activity
+      await logActivity(prisma, {
+        workspaceId: req.workspaceId,
+        userId: req.user.id,
+        action: "PAYMENT_REJECTED",
+        entityType: "Payment",
+        entityId: rejectedPayment.id,
+        message: `${req.user.name} rejected a payment report of ₹${rejectedPayment.amount.toLocaleString()} for ${rejectedPayment.friend.fullName}`,
+      });
+
+      // Fetch workspace settings for UPI details
+      const settings = await prisma.workspaceSetting.findUnique({
+        where: { workspaceId: req.workspaceId },
+      });
+
+      const monthNames = [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+      ];
+      const invRef = payment.invoice
+        ? `INV-${payment.invoice.year}-${String(payment.invoice.month).padStart(2, "0")}-${payment.friend.shortCode}`
+        : "N/A";
+
+      const clientUrl = (
+        process.env.CLIENT_URL || "https://tiffin-split.vercel.app"
+      ).trim();
+
+      return res.json(rejectedPayment);
+    } catch (err) {
+      console.error("Reject payment error:", err);
+      return res.status(500).json({ error: "Failed to reject payment" });
+    }
+  },
+);
+
+// Direct Record Payment (Head bypass for manual instant cash entry)
+router.post(
+  "/workspaces/:workspaceId/payments",
+  verifyWorkspaceMember,
+  async (req, res) => {
+    try {
+      const {
+        friendId,
+        invoiceId,
+        amount,
+        paymentMethod,
+        transactionRef,
+        notes,
+        paidAt,
+      } = req.body;
+
+      const parsedAmount = parseFloat(amount);
+      if (!friendId || isNaN(parsedAmount) || parsedAmount <= 0) {
+        return res.status(400).json({
+          error: "Friend ID and a positive payment amount are required",
+        });
+      }
+
+      const method = (paymentMethod || "UPI").toUpperCase();
+
+      const payment = await prisma.$transaction(async (tx) => {
+        let targetInvoiceId = invoiceId;
+        if (!targetInvoiceId) {
+          const openInvoice = await tx.monthlyInvoice.findFirst({
+            where: {
+              workspaceId: req.workspaceId,
+              friendId,
+              status: { in: ["GENERATED", "PARTIALLY_PAID", "SENT"] },
+            },
+            orderBy: { createdAt: "desc" },
+          });
+          if (openInvoice) targetInvoiceId = openInvoice.id;
+        }
+
+        const newPayment = await tx.payment.create({
+          data: {
+            workspaceId: req.workspaceId,
+            friendId,
+            invoiceId: targetInvoiceId || null,
+            amount: parsedAmount,
+            paymentMethod: method,
+            paymentStatus: "SUCCESS",
+            transactionRef: transactionRef ? transactionRef.trim() : null,
+            notes: notes ? notes.trim() : null,
+            paidAt: paidAt ? new Date(paidAt) : new Date(),
+            verifiedAt: new Date(),
+            recordedById: req.user.id,
+            verifiedById: req.user.id,
+          },
+          include: {
+            friend: { select: { fullName: true, shortCode: true } },
+            invoice: { select: { month: true, year: true, totalAmount: true } },
+          },
+        });
+
+        if (targetInvoiceId) {
+          const allPayments = await tx.payment.findMany({
+            where: { invoiceId: targetInvoiceId, paymentStatus: "SUCCESS" },
+          });
+
+          const totalPaid = allPayments.reduce((acc, p) => acc + p.amount, 0);
+
+          const inv = await tx.monthlyInvoice.findUnique({
+            where: { id: targetInvoiceId },
+          });
+
+          if (inv) {
+            const due = Math.max(0, inv.totalAmount - totalPaid);
+            let status = "GENERATED";
+            if (totalPaid >= inv.totalAmount) status = "PAID";
+            else if (totalPaid > 0) status = "PARTIALLY_PAID";
+
+            await tx.monthlyInvoice.update({
+              where: { id: targetInvoiceId },
+              data: { amountPaid: totalPaid, amountDue: due, status },
+            });
+          }
+        }
+
+        await logActivity(tx, {
+          workspaceId: req.workspaceId,
+          userId: req.user.id,
+          action: "PAYMENT_RECORDED",
+          entityType: "Payment",
+          entityId: newPayment.id,
+          message: `${req.user.name} recorded ₹${parsedAmount.toLocaleString()} ${method} payment for ${newPayment.friend.shortCode}`,
+        });
+
+        return newPayment;
+      });
+
+      return res.status(201).json(payment);
+    } catch (err) {
+      console.error("Record payment error:", err);
+      return res.status(500).json({ error: "Failed to record payment" });
+    }
+  },
+);
 
 export default router;

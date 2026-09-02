@@ -2,6 +2,16 @@
  * Utility functions for WhatsApp bill sharing in TiffinSplit.
  */
 
+/**
+ * Public domain base URL for production WhatsApp sharing.
+ * Always resolves to https://tiffin-split.vercel.app unless VITE_CLIENT_URL is explicitly set.
+ */
+export function getPublicAppUrl(path = '') {
+  const publicBase = (import.meta.env.VITE_CLIENT_URL || 'https://tiffin-split.vercel.app').replace(/\/$/, '');
+  const cleanPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
+  return `${publicBase}${cleanPath}`;
+}
+
 export function normalizePhoneNumber(phone) {
   if (!phone || typeof phone !== 'string') return '';
 

@@ -7,7 +7,7 @@ import { Card } from '../components/UI/Card';
 import { Modal } from '../components/UI/Modal';
 import { EmptyState } from '../components/UI/EmptyState';
 import { LoadingSpinner } from '../components/UI/LoadingSpinner';
-import { normalizePhoneNumber, formatWhatsAppPaymentRejectedMessage, createWhatsAppUrl } from '../utils/whatsapp';
+import { normalizePhoneNumber, formatWhatsAppPaymentRejectedMessage, createWhatsAppUrl, getPublicAppUrl } from '../utils/whatsapp';
 
 export function Payments() {
   const { activeWorkspaceId, activeWorkspace, apiFetch } = useAuth();
@@ -145,9 +145,8 @@ export function Payments() {
       const targetPhone = rejectModal.friend?.phone;
       const cleanPhone = normalizePhoneNumber(targetPhone);
       const name = rejectModal.friend?.fullName || 'there';
-      const baseUrl = window.location.origin;
       const invId = rejectModal.invoiceId || rejectModal.invoice?.id;
-      const invoiceUrl = invId ? `${baseUrl}/invoices/view/${invId}` : `${baseUrl}/invoices`;
+      const invoiceUrl = invId ? getPublicAppUrl(`/invoices/view/${invId}`) : getPublicAppUrl('/invoices');
 
       let whatsappOpened = false;
       if (cleanPhone) {
