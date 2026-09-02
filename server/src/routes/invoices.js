@@ -36,6 +36,88 @@ router.get('/invoices/public/:invoiceId', async (req, res) => {
   }
 });
 
+// Public unauthenticated route to report payment ("I Paid") for an invoice from WhatsApp link
+router.post('/invoices/public/:invoiceId/report', async (req, res) => {
+  try {
+    const { invoiceId } = req.params;
+    const { amount, paymentMethod, transactionRef, notes, paidAt } = req.body;
+
+    const parsedAmount = parseFloat(amount);
+    if (isNaN(parsedAmount) || parsedAmount <= 0) {
+      return res.status(400).json({ error: 'A positive payment amount is required' });
+    }
+
+    const targetInvoice = await prisma.monthlyInvoice.findUnique({
+      where: { id: invoiceId },
+      include: { friend: true }
+    });
+
+    if (!targetInvoice) {
+      return res.status(404).json({ error: 'Invoice statement not found' });
+    }
+
+    if (parsedAmount > targetInvoice.amountDue) {
+      return res.status(400).json({
+        error: `Reported payment of ₹${parsedAmount} exceeds current invoice amount due of ₹${targetInvoice.amountDue}`
+      });
+    }
+
+    // Check for existing pending payment report
+    const existingPending = await prisma.payment.findFirst({
+      where: {
+        invoiceId,
+        amount: parsedAmount,
+        paymentStatus: 'PENDING'
+      }
+    });
+
+    if (existingPending) {
+      return res.status(400).json({
+        error: 'Payment verification already pending. You already reported this payment. Please wait for the Household Head to verify it.'
+      });
+    }
+
+    const method = (paymentMethod || 'UPI').toUpperCase();
+    const reportedTime = new Date();
+
+    const newPayment = await prisma.payment.create({
+      data: {
+        workspaceId: targetInvoice.workspaceId,
+        friendId: targetInvoice.friendId,
+        invoiceId: targetInvoice.id,
+        amount: parsedAmount,
+        paymentMethod: method,
+        paymentStatus: 'PENDING',
+        transactionRef: transactionRef ? transactionRef.trim() : null,
+        notes: notes ? notes.trim() : null,
+        paidAt: paidAt ? new Date(paidAt) : reportedTime,
+        reportedAt: reportedTime,
+        recordedById: targetInvoice.generatedById
+      },
+      include: {
+        friend: { select: { fullName: true, shortCode: true, email: true } },
+        invoice: { select: { id: true, month: true, year: true, totalAmount: true, amountDue: true } }
+      }
+    });
+
+    const invRef = `INV-${targetInvoice.year}-${String(targetInvoice.month).padStart(2, '0')}-${targetInvoice.friend.shortCode}`;
+
+    await logActivity(prisma, {
+      workspaceId: targetInvoice.workspaceId,
+      userId: targetInvoice.generatedById,
+      action: 'PAYMENT_REPORTED',
+      entityType: 'Payment',
+      entityId: newPayment.id,
+      message: `${newPayment.friend.fullName} reported a payment of ₹${parsedAmount.toLocaleString()} for invoice ${invRef}`
+    });
+
+    return res.status(201).json(newPayment);
+  } catch (err) {
+    console.error('Public report payment error:', err);
+    return res.status(500).json({ error: 'Failed to report payment' });
+  }
+});
+
 router.use('/workspaces', authenticateUser);
 
 // List all generated monthly invoices for active workspace

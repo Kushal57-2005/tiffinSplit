@@ -103,12 +103,10 @@ export function PublicInvoice() {
       const headers = { 'Content-Type': 'application/json' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
 
-      const res = await fetch(`${apiUrl}/workspaces/${invoice.workspaceId}/payments/report`, {
+      let res = await fetch(`${apiUrl}/invoices/public/${invoice.id}/report`, {
         method: 'POST',
         headers,
         body: JSON.stringify({
-          friendId: invoice.friendId,
-          invoiceId: invoice.id,
           amount: amt,
           paymentMethod: reportMethod,
           transactionRef: reportRef,
@@ -116,6 +114,22 @@ export function PublicInvoice() {
           paidAt: reportDate
         })
       });
+
+      if (!res.ok) {
+        res = await fetch(`${apiUrl}/workspaces/${invoice.workspaceId}/payments/report`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            friendId: invoice.friendId,
+            invoiceId: invoice.id,
+            amount: amt,
+            paymentMethod: reportMethod,
+            transactionRef: reportRef,
+            notes: reportNotes,
+            paidAt: reportDate
+          })
+        });
+      }
 
       const resData = await res.json();
       if (!res.ok) {
