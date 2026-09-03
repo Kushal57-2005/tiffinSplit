@@ -32,6 +32,8 @@ export function Invoices() {
 
   const [feedback, setFeedback] = useState(null);
 
+  const [hasInitializedDefaultFilter, setHasInitializedDefaultFilter] = useState(false);
+
   const fetchInvoices = async () => {
     if (!activeWorkspaceId) {
       setLoading(false);
@@ -39,14 +41,65 @@ export function Invoices() {
     }
     setLoading(true);
     try {
-      let url = `/workspaces/${activeWorkspaceId}/invoices`;
-      const params = new URLSearchParams();
-      if (selectedMonth) params.append('month', selectedMonth);
-      if (selectedYear) params.append('year', selectedYear);
-      if (params.toString()) url += `?${params.toString()}`;
-
-      const data = await apiFetch(url);
+      // Fetch all invoices for active workspace first to determine default month/year
+      const data = await apiFetch(`/workspaces/${activeWorkspaceId}/invoices`);
       setInvoices(data);
+
+      if (!hasInitializedDefaultFilter) {
+        const currentDate = new Date();
+        const curMonth = currentDate.getMonth() + 1;
+        const curYear = currentDate.getFullYear();
+
+        let prevMonth = curMonth - 1;
+        let prevYear = curYear;
+        if (prevMonth === 0) {
+          prevMonth = 12;
+          prevYear = curYear - 1;
+        }
+
+        if (Array.isArray(data) && data.length > 0) {
+          const monthMap = {};
+          data.forEach((inv) => {
+            const key = `${inv.year}-${String(inv.month).padStart(2, '0')}`;
+            if (!monthMap[key]) {
+              monthMap[key] = { year: inv.year, month: inv.month, due: 0 };
+            }
+            monthMap[key].due += inv.amountDue;
+          });
+
+          const sortedKeysAsc = Object.keys(monthMap).sort();
+          const oldestUnsettledKey = sortedKeysAsc.find((k) => monthMap[k].due > 0);
+
+          if (oldestUnsettledKey) {
+            // Show oldest unsettled month's bill (e.g. last month's bill if unpaid)
+            const monthData = monthMap[oldestUnsettledKey];
+            setSelectedMonth(String(monthData.month));
+            setSelectedYear(String(monthData.year));
+          } else {
+            // All bills are paid! Show current month bill (like dashboard)
+            const curKey = `${curYear}-${String(curMonth).padStart(2, '0')}`;
+            if (monthMap[curKey]) {
+              setSelectedMonth(String(curMonth));
+              setSelectedYear(String(curYear));
+            } else {
+              const prevKey = `${prevYear}-${String(prevMonth).padStart(2, '0')}`;
+              if (monthMap[prevKey]) {
+                setSelectedMonth(String(prevMonth));
+                setSelectedYear(String(prevYear));
+              } else {
+                setSelectedMonth(String(curMonth));
+                setSelectedYear(String(curYear));
+              }
+            }
+          }
+        } else {
+          // No invoices generated yet: default to last month
+          setSelectedMonth(String(prevMonth));
+          setSelectedYear(String(prevYear));
+        }
+
+        setHasInitializedDefaultFilter(true);
+      }
     } catch (err) {
       console.error('Failed to fetch invoices:', err);
     } finally {
@@ -55,8 +108,14 @@ export function Invoices() {
   };
 
   useEffect(() => {
+    setHasInitializedDefaultFilter(false);
+    setSelectedMonth('');
+    setSelectedYear('');
+  }, [activeWorkspaceId]);
+
+  useEffect(() => {
     fetchInvoices();
-  }, [activeWorkspaceId, selectedMonth, selectedYear]);
+  }, [activeWorkspaceId]);
 
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
