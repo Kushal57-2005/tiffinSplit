@@ -8,6 +8,7 @@ export function DateRangePicker({ startDate, endDate, onChange, label }) {
   const [tempStart, setTempStart] = useState(startDate || '');
   const [tempEnd, setTempEnd] = useState(endDate || '');
   const [hoverDate, setHoverDate] = useState('');
+  const [isDragging, setIsDragging] = useState(false);
   const [activePreset, setActivePreset] = useState(label || 'All time');
 
   // Month navigation: viewMonth is Date object representing left calendar month
@@ -27,15 +28,36 @@ export function DateRangePicker({ startDate, endDate, onChange, label }) {
     setTempEnd(endDate || '');
   }, [startDate, endDate]);
 
+  // Close dropdown when clicking outside & handle global mouse up for dragging
   useEffect(() => {
     function handleClickOutside(event) {
       if (containerRef.current && !containerRef.current.contains(event.target)) {
         setIsOpen(false);
       }
     }
+
+    function handleGlobalMouseUp() {
+      if (isDragging) {
+        setIsDragging(false);
+        if (tempStart && hoverDate && !tempEnd) {
+          if (hoverDate >= tempStart) {
+            setTempEnd(hoverDate);
+          } else {
+            setTempEnd(tempStart);
+            setTempStart(hoverDate);
+          }
+        }
+        setHoverDate('');
+      }
+    }
+
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+    window.addEventListener('mouseup', handleGlobalMouseUp);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('mouseup', handleGlobalMouseUp);
+    };
+  }, [isDragging, tempStart, hoverDate, tempEnd]);
 
   const formatDateLabel = (dStr) => {
     if (!dStr) return '';
@@ -121,6 +143,7 @@ export function DateRangePicker({ startDate, endDate, onChange, label }) {
 
     setTempStart(start);
     setTempEnd(end);
+    setHoverDate('');
     setActivePreset(presetKey);
 
     if (presetKey !== 'Custom Range') {
@@ -129,18 +152,50 @@ export function DateRangePicker({ startDate, endDate, onChange, label }) {
     }
   };
 
+  const handleDateMouseDown = (dateStr) => {
+    setActivePreset('Custom Range');
+    setIsDragging(true);
+    setTempStart(dateStr);
+    setTempEnd('');
+    setHoverDate(dateStr);
+  };
+
+  const handleDateMouseEnter = (dateStr) => {
+    if (tempStart && !tempEnd) {
+      setHoverDate(dateStr);
+    }
+  };
+
+  const handleDateMouseUp = (dateStr) => {
+    if (isDragging) {
+      setIsDragging(false);
+      if (tempStart) {
+        if (dateStr >= tempStart) {
+          setTempEnd(dateStr);
+        } else {
+          setTempEnd(tempStart);
+          setTempStart(dateStr);
+        }
+      }
+      setHoverDate('');
+    }
+  };
+
   const handleDateClick = (dateStr) => {
     setActivePreset('Custom Range');
-    if (!tempStart || (tempStart && tempEnd)) {
-      setTempStart(dateStr);
-      setTempEnd('');
-      setHoverDate('');
-    } else if (tempStart && !tempEnd) {
-      if (dateStr >= tempStart) {
-        setTempEnd(dateStr);
-      } else {
+    if (!isDragging) {
+      if (!tempStart || (tempStart && tempEnd)) {
         setTempStart(dateStr);
         setTempEnd('');
+        setHoverDate('');
+      } else if (tempStart && !tempEnd) {
+        if (dateStr >= tempStart) {
+          setTempEnd(dateStr);
+        } else {
+          setTempStart(dateStr);
+          setTempEnd('');
+        }
+        setHoverDate('');
       }
     }
   };
@@ -214,20 +269,26 @@ export function DateRangePicker({ startDate, endDate, onChange, label }) {
   const leftDays = generateMonthGrid(leftYear, leftMonth);
   const rightDays = generateMonthGrid(rightYear, rightMonth);
 
+  const getEffectiveEnd = () => {
+    if (tempEnd) return tempEnd;
+    if (tempStart && hoverDate) return hoverDate;
+    return tempStart;
+  };
+
   const isSelectedRange = (dateStr) => {
-    if (!dateStr) return false;
-    const effectiveEnd = tempEnd || hoverDate;
-    if (tempStart && effectiveEnd) {
-      const min = tempStart < effectiveEnd ? tempStart : effectiveEnd;
-      const max = tempStart > effectiveEnd ? tempStart : effectiveEnd;
-      return dateStr >= min && dateStr <= max;
-    }
-    return dateStr === tempStart || dateStr === tempEnd;
+    if (!dateStr || !tempStart) return false;
+    const effectiveEnd = getEffectiveEnd();
+    if (!effectiveEnd) return dateStr === tempStart;
+
+    const min = tempStart < effectiveEnd ? tempStart : effectiveEnd;
+    const max = tempStart > effectiveEnd ? tempStart : effectiveEnd;
+    return dateStr >= min && dateStr <= max;
   };
 
   const isStartOrEndDate = (dateStr) => {
     if (!dateStr) return false;
-    return dateStr === tempStart || dateStr === tempEnd;
+    const effectiveEnd = getEffectiveEnd();
+    return dateStr === tempStart || dateStr === effectiveEnd;
   };
 
   return (
@@ -311,7 +372,12 @@ export function DateRangePicker({ startDate, endDate, onChange, label }) {
             </div>
 
             {/* Calendar Grid Container (1 or 2 months) */}
-            <div style={{ padding: '1rem', display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
+            <div
+              onMouseLeave={() => {
+                if (!isDragging) setHoverDate('');
+              }}
+              style={{ padding: '1rem', display: 'flex', gap: '1.5rem', flexWrap: 'wrap', userSelect: 'none' }}
+            >
               {/* Left Month Calendar */}
               <div style={{ width: '230px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
@@ -347,8 +413,10 @@ export function DateRangePicker({ startDate, endDate, onChange, label }) {
                     return (
                       <div
                         key={idx}
+                        onMouseDown={() => handleDateMouseDown(item.dateStr)}
+                        onMouseEnter={() => handleDateMouseEnter(item.dateStr)}
+                        onMouseUp={() => handleDateMouseUp(item.dateStr)}
                         onClick={() => handleDateClick(item.dateStr)}
-                        onMouseEnter={() => setHoverDate(item.dateStr)}
                         style={{
                           height: '30px',
                           display: 'flex',
@@ -359,7 +427,8 @@ export function DateRangePicker({ startDate, endDate, onChange, label }) {
                           backgroundColor: isEndpoint ? '#7F56D9' : isSelected ? '#F9F5FF' : 'transparent',
                           color: isEndpoint ? '#FFFFFF' : isSelected ? '#7F56D9' : 'var(--text)',
                           borderRadius: isEndpoint ? '50%' : '0',
-                          fontWeight: isEndpoint ? '700' : '400'
+                          fontWeight: isEndpoint ? '700' : '400',
+                          transition: 'background-color 0.1s ease'
                         }}
                       >
                         {item.day}
@@ -404,8 +473,10 @@ export function DateRangePicker({ startDate, endDate, onChange, label }) {
                     return (
                       <div
                         key={idx}
+                        onMouseDown={() => handleDateMouseDown(item.dateStr)}
+                        onMouseEnter={() => handleDateMouseEnter(item.dateStr)}
+                        onMouseUp={() => handleDateMouseUp(item.dateStr)}
                         onClick={() => handleDateClick(item.dateStr)}
-                        onMouseEnter={() => setHoverDate(item.dateStr)}
                         style={{
                           height: '30px',
                           display: 'flex',
@@ -416,7 +487,8 @@ export function DateRangePicker({ startDate, endDate, onChange, label }) {
                           backgroundColor: isEndpoint ? '#7F56D9' : isSelected ? '#F9F5FF' : 'transparent',
                           color: isEndpoint ? '#FFFFFF' : isSelected ? '#7F56D9' : 'var(--text)',
                           borderRadius: isEndpoint ? '50%' : '0',
-                          fontWeight: isEndpoint ? '700' : '400'
+                          fontWeight: isEndpoint ? '700' : '400',
+                          transition: 'background-color 0.1s ease'
                         }}
                       >
                         {item.day}
@@ -457,7 +529,7 @@ export function DateRangePicker({ startDate, endDate, onChange, label }) {
                 placeholder="D / M / YYYY"
                 className="input font-mono"
                 style={{ width: '105px', padding: '0.3rem 0.45rem', fontSize: '0.8rem', textAlign: 'center' }}
-                value={formatShortInputDate(tempEnd)}
+                value={formatShortInputDate(tempEnd || (tempStart && hoverDate ? hoverDate : ''))}
               />
             </div>
 
