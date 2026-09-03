@@ -5,7 +5,6 @@ import { useAuth } from '../context/AuthContext';
 import { Card } from '../components/UI/Card';
 import { Button } from '../components/UI/Button';
 import { Badge } from '../components/UI/Badge';
-import { Modal } from '../components/UI/Modal';
 import { EmptyState } from '../components/UI/EmptyState';
 import { LoadingSpinner } from '../components/UI/LoadingSpinner';
 
@@ -17,19 +16,6 @@ export function Friends() {
   const [loading, setLoading] = useState(true);
   const [includeInactive, setIncludeInactive] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingFriend, setEditingFriend] = useState(null);
-  const [formData, setFormData] = useState({
-    fullName: '',
-    shortCode: '',
-    email: '',
-    phone: '',
-    upiId: '',
-    notes: ''
-  });
-  const [modalError, setModalError] = useState('');
-  const [submitting, setSubmitting] = useState(false);
 
   const fetchFriends = async () => {
     if (!activeWorkspaceId) {
@@ -52,53 +38,6 @@ export function Friends() {
   useEffect(() => {
     fetchFriends();
   }, [activeWorkspaceId, includeInactive]);
-
-  const openCreateModal = () => {
-    setEditingFriend(null);
-    setFormData({ fullName: '', shortCode: '', email: '', phone: '', upiId: '', notes: '' });
-    setModalError('');
-    setIsModalOpen(true);
-  };
-
-  const openEditModal = (friend) => {
-    setEditingFriend(friend);
-    setFormData({
-      fullName: friend.fullName || '',
-      shortCode: friend.shortCode || '',
-      email: friend.email || '',
-      phone: friend.phone || '',
-      upiId: friend.upiId || '',
-      notes: friend.notes || ''
-    });
-    setModalError('');
-    setIsModalOpen(true);
-  };
-
-  const handleSave = async (e) => {
-    e.preventDefault();
-    setModalError('');
-    setSubmitting(true);
-
-    try {
-      if (editingFriend) {
-        await apiFetch(`/workspaces/${activeWorkspaceId}/friends/${editingFriend.id}`, {
-          method: 'PUT',
-          body: JSON.stringify(formData)
-        });
-      } else {
-        await apiFetch(`/workspaces/${activeWorkspaceId}/friends`, {
-          method: 'POST',
-          body: JSON.stringify(formData)
-        });
-      }
-      setIsModalOpen(false);
-      fetchFriends();
-    } catch (err) {
-      setModalError(err.message || 'Failed to save friend');
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   const handleToggleStatus = async (friend) => {
     try {
@@ -130,9 +69,9 @@ export function Friends() {
             People whose daily tiffin meals are logged and billed in this household
           </p>
         </div>
-        <Button onClick={openCreateModal} className="btn-mobile-full">
+        <Button onClick={() => navigate('/friends/new')} className="btn-mobile-full">
           <Plus size={16} />
-          <span>+ Add Friend</span>
+          <span>Add Friend</span>
         </Button>
       </div>
 
@@ -143,14 +82,14 @@ export function Friends() {
             <input
               type="text"
               className="input"
-              style={{ paddingLeft: '2.25rem' }}
+              style={{ paddingLeft: '2.25rem', borderRadius: '12px' }}
               placeholder="Search by name or short code..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
 
-          <label className="checkbox-label" style={{ fontSize: '0.85rem' }}>
+          <label className="checkbox-label" style={{ fontSize: '0.85rem', borderRadius: '12px' }}>
             <input
               type="checkbox"
               className="checkbox-input"
@@ -248,7 +187,7 @@ export function Friends() {
                           <Button variant="secondary" size="sm" onClick={() => navigate(`/friends/${friend.id}`)} title="View Profile">
                             <Eye size={14} />
                           </Button>
-                          <Button variant="secondary" size="sm" onClick={() => openEditModal(friend)} title="Edit Friend">
+                          <Button variant="secondary" size="sm" onClick={() => navigate(`/friends/${friend.id}/edit`)} title="Edit Friend">
                             <Edit3 size={14} />
                           </Button>
                           <Button
@@ -322,7 +261,7 @@ export function Friends() {
                       <Eye size={14} />
                       <span>View</span>
                     </Button>
-                    <Button variant="secondary" size="sm" onClick={() => openEditModal(friend)} style={{ flex: 1 }}>
+                    <Button variant="secondary" size="sm" onClick={() => navigate(`/friends/${friend.id}/edit`)} style={{ flex: 1 }}>
                       <Edit3 size={14} />
                       <span>Edit</span>
                     </Button>
@@ -340,102 +279,6 @@ export function Friends() {
           </div>
         </>
       )}
-
-      {/* Modal */}
-      <Modal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title={editingFriend ? `Edit Roommate: ${editingFriend.fullName}` : 'Add Roommate'}
-      >
-        {modalError && (
-          <div style={{ backgroundColor: 'var(--error-bg)', color: 'var(--error-text)', padding: '0.6rem', borderRadius: 'var(--radius-sm)', fontSize: '0.85rem', marginBottom: '1rem' }}>
-            {modalError}
-          </div>
-        )}
-
-        <form onSubmit={handleSave}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.85rem' }}>
-            <div className="form-group">
-              <label className="form-label">Full Name *</label>
-              <input
-                type="text"
-                className="input"
-                required
-                placeholder="e.g. Rahul Sharma"
-                value={formData.fullName}
-                onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Short Code *</label>
-              <input
-                type="text"
-                className="input font-mono"
-                required
-                placeholder="e.g. KP or S"
-                value={formData.shortCode}
-                onChange={(e) => setFormData({ ...formData, shortCode: e.target.value.toUpperCase() })}
-              />
-            </div>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.85rem' }}>
-            <div className="form-group">
-              <label className="form-label">Phone (Optional)</label>
-              <input
-                type="text"
-                className="input"
-                placeholder="+91 9876543210"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Email (Optional)</label>
-              <input
-                type="email"
-                className="input"
-                placeholder="rahul@example.com"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              />
-            </div>
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">UPI ID for Direct Billing (Optional)</label>
-            <input
-              type="text"
-              className="input font-mono"
-              placeholder="rahul@okaxis"
-              value={formData.upiId}
-              onChange={(e) => setFormData({ ...formData, upiId: e.target.value })}
-            />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Notes (Optional)</label>
-            <textarea
-              className="textarea"
-              rows={2}
-              placeholder="Dietary preferences..."
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-            />
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.25rem' }}>
-            <Button variant="secondary" onClick={() => setIsModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={submitting}>
-              {submitting ? 'Saving...' : editingFriend ? 'Update Friend' : 'Save Friend'}
-            </Button>
-          </div>
-        </form>
-      </Modal>
     </div>
   );
 }

@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
+import { CustomSelectDropdown } from "./UI/CustomSelectDropdown";
+
 export function Navigation({ mobileOpen, setMobileOpen }) {
   const { user, workspaces, activeWorkspaceId, switchWorkspace, logout } = useAuth();
   const navigate = useNavigate();
@@ -129,36 +131,16 @@ export function Navigation({ mobileOpen, setMobileOpen }) {
             backgroundColor: "var(--surface-muted)",
           }}
         >
-          <label
-            style={{
-              fontSize: "0.65rem",
-              color: "var(--text-muted)",
-              textTransform: "uppercase",
-              letterSpacing: "0.06em",
-              fontWeight: "600",
-              display: "block"
-            }}
-          >
-            Household Workspace
-          </label>
-          <select
-            className="select"
-            style={{
-              marginTop: "0.25rem",
-              padding: "0.4rem 0.6rem",
-              fontSize: "0.85rem",
-              fontWeight: "500",
-              minHeight: "38px"
-            }}
+          <CustomSelectDropdown
+            label="Household Workspace"
             value={activeWorkspaceId || ""}
-            onChange={(e) => switchWorkspace(e.target.value)}
-          >
-            {workspaces.map((w) => (
-              <option key={w.id} value={w.id}>
-                {w.name}
-              </option>
-            ))}
-          </select>
+            onChange={switchWorkspace}
+            options={workspaces.map((w) => ({
+              label: w.name,
+              value: w.id
+            }))}
+            minWidth="100%"
+          />
         </div>
       )}
 

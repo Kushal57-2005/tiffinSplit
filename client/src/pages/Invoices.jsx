@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Receipt, FileSpreadsheet, Eye, Mail, Send, CheckCircle, AlertCircle, X, CreditCard, Filter } from 'lucide-react';
+import { Receipt, FileSpreadsheet, Eye, Mail, Send, CheckCircle, AlertCircle, X, CreditCard, Filter, MessageCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Card } from '../components/UI/Card';
 import { Button } from '../components/UI/Button';
 import { Badge } from '../components/UI/Badge';
 import { EmptyState } from '../components/UI/EmptyState';
 import { LoadingSpinner } from '../components/UI/LoadingSpinner';
+
+import { CustomSelectDropdown } from '../components/UI/CustomSelectDropdown';
+import { getPublicAppUrl, formatWhatsAppBillMessage, createWhatsAppUrl } from '../utils/whatsapp';
 
 export function Invoices() {
   const { activeWorkspaceId, apiFetch } = useAuth();
@@ -122,6 +125,25 @@ export function Invoices() {
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
 
+  const handleSendWhatsApp = (inv) => {
+    const invoiceUrl = getPublicAppUrl(`/invoices/view/${inv.id}`);
+    const message = formatWhatsAppBillMessage({
+      friendName: inv.friend?.fullName,
+      monthName: monthNames[inv.month - 1],
+      year: inv.year,
+      amount: inv.amountDue > 0 ? inv.amountDue : inv.totalAmount,
+      invoiceUrl
+    });
+
+    const url = createWhatsAppUrl(inv.friend?.phone, message);
+    if (url) {
+      window.open(url, '_blank');
+    } else {
+      const webUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
+      window.open(webUrl, '_blank');
+    }
+  };
+
   const filteredInvoices = invoices.filter((inv) => {
     if (selectedMonth && String(inv.month) !== String(selectedMonth)) return false;
     if (selectedYear && String(inv.year) !== String(selectedYear)) return false;
@@ -224,73 +246,64 @@ export function Invoices() {
 
       {/* Month, Year & Status Filter Controls */}
       <Card>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', flex: 1 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-muted)', fontWeight: '500', fontSize: '0.85rem', marginRight: '0.25rem' }}>
-              <Filter size={16} />
-              <span>Filter:</span>
-            </div>
-
-            {/* Month Selector */}
-            <select
-              className="select"
-              style={{ width: 'auto', minWidth: '130px' }}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '100%' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '0.65rem', width: '100%', alignItems: 'end' }}>
+            {/* Month Dropdown */}
+            <CustomSelectDropdown
+              label="Month"
               value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-            >
-              <option value="">All Months</option>
-              {monthNames.map((m, idx) => (
-                <option key={idx + 1} value={idx + 1}>
-                  {m}
-                </option>
-              ))}
-            </select>
+              onChange={setSelectedMonth}
+              options={[
+                { label: 'All Months', value: '' },
+                ...monthNames.map((m, idx) => ({ label: m, value: String(idx + 1) }))
+              ]}
+              minWidth="100%"
+            />
 
-            {/* Year Selector */}
-            <select
-              className="select"
-              style={{ width: 'auto', minWidth: '105px' }}
+            {/* Year Dropdown */}
+            <CustomSelectDropdown
+              label="Year"
               value={selectedYear}
-              onChange={(e) => setSelectedYear(e.target.value)}
-            >
-              <option value="">All Years</option>
-              <option value="2024">2024</option>
-              <option value="2025">2025</option>
-              <option value="2026">2026</option>
-              <option value="2027">2027</option>
-            </select>
+              onChange={setSelectedYear}
+              options={[
+                { label: 'All Years', value: '' },
+                { label: '2024', value: '2024' },
+                { label: '2025', value: '2025' },
+                { label: '2026', value: '2026' },
+                { label: '2027', value: '2027' }
+              ]}
+              minWidth="100%"
+            />
 
-            {/* Status Selector */}
-            <select
-              className="select"
-              style={{ width: 'auto', minWidth: '125px' }}
+            {/* Status Dropdown */}
+            <CustomSelectDropdown
+              label="Status"
               value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
-            >
-              <option value="">All Statuses</option>
-              <option value="PAID">Paid Only</option>
-              <option value="UNPAID">Due / Unpaid</option>
-              <option value="GENERATED">Generated</option>
-            </select>
+              onChange={setSelectedStatus}
+              options={[
+                { label: 'All Statuses', value: '' },
+                { label: 'Paid Only', value: 'PAID' },
+                { label: 'Due / Unpaid', value: 'UNPAID' },
+                { label: 'Generated', value: 'GENERATED' }
+              ]}
+              minWidth="100%"
+            />
 
             {(selectedMonth || selectedYear || selectedStatus) && (
-              <Button
-                variant="secondary"
-                size="sm"
+              <button
+                type="button"
+                className="btn btn-secondary"
                 onClick={() => {
                   setSelectedMonth('');
                   setSelectedYear('');
                   setSelectedStatus('');
                 }}
-                style={{ fontSize: '0.78rem', padding: '0.3rem 0.55rem' }}
+                style={{ padding: '0.55rem 0.75rem', fontSize: '0.85rem', borderRadius: '12px', height: '42px', width: '100%', justifyContent: 'center' }}
               >
-                <X size={14} /> Clear
-              </Button>
+                <X size={16} />
+                <span>Clear all</span>
+              </button>
             )}
-          </div>
-
-          <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontWeight: '500' }}>
-            Showing {filteredInvoices.length} of {invoices.length} invoices
           </div>
         </div>
       </Card>
@@ -331,19 +344,19 @@ export function Invoices() {
       ) : (
         <>
           {/* Desktop Table View */}
-          <div className="table-container desktop-only-table">
-            <table className="table">
+          <div className="table-container desktop-only-table" style={{ width: '100%', overflowX: 'hidden' }}>
+            <table className="table" style={{ width: '100%', tableLayout: 'fixed' }}>
               <thead>
                 <tr>
-                  <th>Invoice Ref</th>
-                  <th>Billing Period</th>
-                  <th>Roommate</th>
-                  <th className="num">Qty</th>
-                  <th className="num">Subtotal</th>
-                  <th className="num">Paid</th>
-                  <th className="num">Due</th>
-                  <th>Status</th>
-                  <th style={{ textAlign: 'right' }}>Actions</th>
+                  <th style={{ padding: '0.85rem 0.5rem', width: '16%' }}>Invoice Ref</th>
+                  <th style={{ padding: '0.85rem 0.5rem', width: '12%' }}>Period</th>
+                  <th style={{ padding: '0.85rem 0.5rem', width: '22%' }}>Roommate</th>
+                  <th className="num" style={{ padding: '0.85rem 0.3rem', width: '4%' }}>Qty</th>
+                  <th className="num" style={{ padding: '0.85rem 0.4rem', width: '7%' }}>Total</th>
+                  <th className="num" style={{ padding: '0.85rem 0.4rem', width: '6%' }}>Paid</th>
+                  <th className="num" style={{ padding: '0.85rem 0.4rem', width: '7%' }}>Due</th>
+                  <th style={{ padding: '0.85rem 0.5rem', width: '9%' }}>Status</th>
+                  <th style={{ textAlign: 'right', padding: '0.85rem 0.75rem', width: '17%' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -353,29 +366,29 @@ export function Invoices() {
 
                   return (
                     <tr key={inv.id}>
-                      <td>
-                        <span className="code-id" style={{ fontWeight: '600', color: 'var(--accent-invoice-text)', fontSize: '0.82rem' }}>
+                      <td style={{ padding: '0.85rem 0.5rem' }}>
+                        <span className="code-id" style={{ fontWeight: '600', color: 'var(--accent-invoice-text)', fontSize: '0.85rem' }}>
                           {invRef}
                         </span>
                       </td>
-                      <td style={{ fontWeight: '500', fontSize: '0.85rem' }}>
+                      <td style={{ padding: '0.85rem 0.5rem', fontWeight: '500', fontSize: '0.88rem' }}>
                         {monthNames[inv.month - 1]} {inv.year}
                       </td>
-                      <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                          <span className="code-id" style={{ fontWeight: '600', fontSize: '0.75rem', padding: '0.1rem 0.35rem', backgroundColor: 'var(--accent-invoice)', color: 'var(--accent-invoice-text)', borderRadius: 'var(--radius-sm)' }}>
+                      <td style={{ padding: '0.85rem 0.5rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', overflow: 'hidden' }}>
+                          <span className="code-id" style={{ fontWeight: '600', fontSize: '0.75rem', padding: '0.12rem 0.4rem', backgroundColor: 'var(--accent-invoice)', color: 'var(--accent-invoice-text)', borderRadius: 'var(--radius-sm)', flexShrink: 0 }}>
                             {inv.friend.shortCode}
                           </span>
-                          <span style={{ fontSize: '0.88rem' }}>{inv.friend.fullName}</span>
+                          <span style={{ fontSize: '0.88rem', fontWeight: '500', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{inv.friend.fullName}</span>
                         </div>
                       </td>
-                      <td className="num">{inv.totalQuantity}</td>
-                      <td className="num font-mono">₹{inv.subtotalAmount.toLocaleString()}</td>
-                      <td className="num font-mono" style={{ color: 'var(--success-text)', fontWeight: '600' }}>₹{inv.amountPaid.toLocaleString()}</td>
-                      <td className="num font-mono" style={{ fontWeight: '700', color: inv.amountDue > 0 ? 'var(--warning-text)' : 'inherit' }}>
+                      <td className="num" style={{ padding: '0.85rem 0.3rem', fontSize: '0.88rem' }}>{inv.totalQuantity}</td>
+                      <td className="num font-mono" style={{ padding: '0.85rem 0.4rem', fontSize: '0.88rem' }}>₹{inv.totalAmount.toLocaleString()}</td>
+                      <td className="num font-mono" style={{ padding: '0.85rem 0.4rem', fontSize: '0.88rem', color: 'var(--success-text)', fontWeight: '600' }}>₹{inv.amountPaid.toLocaleString()}</td>
+                      <td className="num font-mono" style={{ padding: '0.85rem 0.4rem', fontSize: '0.88rem', fontWeight: '700', color: inv.amountDue > 0 ? 'var(--warning-text)' : 'inherit' }}>
                         ₹{inv.amountDue.toLocaleString()}
                       </td>
-                      <td>
+                      <td style={{ padding: '0.85rem 0.5rem' }}>
                         <Badge
                           variant={
                             inv.status === 'PAID'
@@ -384,13 +397,13 @@ export function Invoices() {
                               ? 'warning'
                               : 'invoice'
                           }
-                          style={{ fontSize: '0.7rem' }}
+                          style={{ fontSize: '0.72rem', padding: '0.2rem 0.5rem' }}
                         >
                           {inv.status}
                         </Badge>
                       </td>
-                      <td style={{ textAlign: 'right' }}>
-                        <div style={{ display: 'inline-flex', gap: '0.3rem', justifyContent: 'flex-end', alignItems: 'center' }}>
+                      <td style={{ textAlign: 'right', padding: '0.85rem 0.75rem' }}>
+                        <div style={{ display: 'inline-flex', gap: '0.45rem', justifyContent: 'flex-end', alignItems: 'center' }}>
                           <Button
                             variant="secondary"
                             size="sm"
@@ -399,8 +412,9 @@ export function Invoices() {
                             style={{
                               borderColor: isPaid ? 'var(--border)' : 'var(--success-text)',
                               color: isPaid ? 'var(--text-muted)' : 'var(--success-text)',
-                              padding: '0.3rem 0.55rem',
-                              fontSize: '0.78rem'
+                              padding: '0.35rem 0.65rem',
+                              fontSize: '0.78rem',
+                              borderRadius: '12px'
                             }}
                           >
                             <CreditCard size={13} />
@@ -412,9 +426,27 @@ export function Invoices() {
                             size="sm"
                             onClick={() => navigate(`/invoices/${inv.id}`)}
                             title="View Statement Details"
+                            style={{ borderRadius: '12px', padding: '0.35rem 0.55rem' }}
                           >
                             <Eye size={14} />
                           </Button>
+
+                          <div className="tooltip-wrapper">
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => handleSendWhatsApp(inv)}
+                              style={{
+                                borderColor: '#25D366',
+                                color: '#25D366',
+                                borderRadius: '12px',
+                                padding: '0.35rem 0.6rem'
+                              }}
+                            >
+                              <MessageCircle size={14} style={{ color: '#25D366' }} />
+                            </Button>
+                            <span className="tooltip-content">Send statement on WhatsApp</span>
+                          </div>
                         </div>
                       </td>
                     </tr>
@@ -425,19 +457,19 @@ export function Invoices() {
           </div>
 
           {/* Mobile Cards View */}
-          <div className="mobile-only-card" style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+          <div className="mobile-only-card" style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', width: '100%', maxWidth: '100%', overflowX: 'hidden' }}>
             {filteredInvoices.map((inv) => {
               const invRef = `INV-${inv.year}-${String(inv.month).padStart(2, '0')}-${inv.friend.shortCode}`;
               const isPaid = inv.status === 'PAID' || inv.amountDue === 0;
 
               return (
-                <div key={inv.id} className="mobile-card">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
+                <div key={inv.id} className="mobile-card" style={{ width: '100%', boxSizing: 'border-box', overflowX: 'hidden' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.35rem' }}>
+                    <div style={{ minWidth: 0 }}>
                       <span className="code-id" style={{ fontSize: '0.75rem', color: 'var(--accent-invoice-text)', fontWeight: '700' }}>
                         {invRef}
                       </span>
-                      <div style={{ fontWeight: '700', fontSize: '0.95rem', marginTop: '0.1rem' }}>
+                      <div style={{ fontWeight: '700', fontSize: '0.95rem', marginTop: '0.1rem', wordBreak: 'break-word' }}>
                         {inv.friend.fullName} ({inv.friend.shortCode})
                       </div>
                     </div>
@@ -459,13 +491,13 @@ export function Invoices() {
                     Period: <strong style={{ color: 'var(--text)' }}>{monthNames[inv.month - 1]} {inv.year}</strong> • {inv.totalQuantity} tiffins
                   </div>
 
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--surface-muted)', padding: '0.5rem 0.75rem', borderRadius: 'var(--radius-sm)', fontSize: '0.85rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--surface-muted)', padding: '0.5rem 0.65rem', borderRadius: 'var(--radius-sm)', fontSize: '0.82rem', flexWrap: 'wrap', gap: '0.35rem' }}>
                     <div>Total: <strong className="font-mono">₹{inv.totalAmount}</strong></div>
                     <div>Paid: <strong className="font-mono" style={{ color: 'var(--success-text)' }}>₹{inv.amountPaid}</strong></div>
                     <div>Due: <strong className="font-mono" style={{ color: inv.amountDue > 0 ? 'var(--warning-text)' : 'inherit' }}>₹{inv.amountDue}</strong></div>
                   </div>
 
-                  <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.4rem' }}>
+                  <div style={{ display: 'flex', gap: '0.35rem', marginTop: '0.4rem', alignItems: 'center', width: '100%' }}>
                     <Button
                       variant="secondary"
                       size="sm"
@@ -473,11 +505,15 @@ export function Invoices() {
                       onClick={() => handleOpenSettleModal(inv)}
                       style={{
                         flex: 1,
+                        minWidth: 0,
                         borderColor: isPaid ? 'var(--border)' : 'var(--success-text)',
-                        color: isPaid ? 'var(--text-muted)' : 'var(--success-text)'
+                        color: isPaid ? 'var(--text-muted)' : 'var(--success-text)',
+                        borderRadius: '12px',
+                        padding: '0.35rem 0.4rem',
+                        fontSize: '0.78rem'
                       }}
                     >
-                      <CreditCard size={14} />
+                      <CreditCard size={13} />
                       <span>{isPaid ? 'Settled' : 'Settle'}</span>
                     </Button>
 
@@ -485,11 +521,28 @@ export function Invoices() {
                       variant="secondary"
                       size="sm"
                       onClick={() => navigate(`/invoices/${inv.id}`)}
-                      style={{ flex: 1 }}
+                      style={{ flex: 1, minWidth: 0, borderRadius: '12px', padding: '0.35rem 0.4rem', fontSize: '0.78rem' }}
                     >
-                      <Eye size={14} />
+                      <Eye size={13} />
                       <span>View</span>
                     </Button>
+
+                    <div className="tooltip-wrapper" style={{ flex: '0 0 auto' }}>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => handleSendWhatsApp(inv)}
+                        style={{
+                          borderColor: '#25D366',
+                          color: '#25D366',
+                          borderRadius: '12px',
+                          padding: '0.35rem 0.55rem'
+                        }}
+                      >
+                        <MessageCircle size={14} style={{ color: '#25D366' }} />
+                      </Button>
+                      <span className="tooltip-content">Send statement on WhatsApp</span>
+                    </div>
                   </div>
                 </div>
               );
@@ -541,19 +594,18 @@ export function Invoices() {
                 />
               </div>
 
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">Payment Method *</label>
-                <select
-                  className="select"
-                  value={settleMethod}
-                  onChange={(e) => setSettleMethod(e.target.value)}
-                >
-                  <option value="UPI">UPI (PhonePe / GPay / Paytm)</option>
-                  <option value="CASH">Cash</option>
-                  <option value="BANK_TRANSFER">Bank Transfer</option>
-                  <option value="OTHER">Other</option>
-                </select>
-              </div>
+              <CustomSelectDropdown
+                label="Payment Method *"
+                value={settleMethod}
+                onChange={setSettleMethod}
+                options={[
+                  { label: 'UPI (PhonePe / GPay / Paytm)', value: 'UPI' },
+                  { label: 'Cash', value: 'CASH' },
+                  { label: 'Bank Transfer', value: 'BANK_TRANSFER' },
+                  { label: 'Other', value: 'OTHER' }
+                ]}
+                minWidth="100%"
+              />
 
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <label className="form-label">Transaction Ref / UPI ID (Optional)</label>

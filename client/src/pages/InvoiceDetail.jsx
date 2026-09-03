@@ -6,6 +6,7 @@ import { Button } from '../components/UI/Button';
 import { Badge } from '../components/UI/Badge';
 import { Modal } from '../components/UI/Modal';
 import { LoadingSpinner } from '../components/UI/LoadingSpinner';
+import { CustomSelectDropdown } from '../components/UI/CustomSelectDropdown';
 import { normalizePhoneNumber, formatWhatsAppBillMessage, createWhatsAppUrl, getPublicAppUrl } from '../utils/whatsapp';
 
 export function InvoiceDetail() {
@@ -208,56 +209,17 @@ export function InvoiceDetail() {
       )}
 
       {/* Top Header Actions */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
         <Button variant="secondary" size="sm" onClick={() => navigate('/invoices')}>
           <ArrowLeft size={14} /> Back to Invoices
         </Button>
 
-        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-          {/* Roommate "I Paid" Button */}
-          {!isFullyPaid && (
-            <Button
-              disabled={!!pendingPayment}
-              onClick={() => {
-                setReportAmount(invoice.amountDue.toString());
-                setReportError('');
-                setIsReportModalOpen(true);
-              }}
-              style={{ backgroundColor: 'var(--brown)', borderColor: 'var(--brown)' }}
-            >
-              <CreditCard size={15} />
-              <span>{pendingPayment ? 'Verification Pending' : rejectedPayment ? `Pay ₹${invoice.amountDue.toLocaleString()} Again` : `I Paid ₹${invoice.amountDue.toLocaleString()}`}</span>
-            </Button>
-          )}
-
-          {invoice.amountDue > 0 && (
-            <a
-              href={upiLink}
-              target="_blank"
-              rel="noreferrer"
-              style={{
-                backgroundColor: '#2E7D32',
-                color: '#FFFFFF',
-                padding: '0.45rem 0.9rem',
-                borderRadius: 'var(--radius-md)',
-                fontSize: '0.85rem',
-                fontWeight: '600',
-                textDecoration: 'none',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.4rem',
-                boxShadow: '0 2px 6px rgba(46,125,50,0.3)'
-              }}
-            >
-              <ExternalLink size={14} /> Pay Now ₹{invoice.amountDue.toLocaleString()}
-            </a>
-          )}
-
-          <Button variant="secondary" size="sm" onClick={handleSendWhatsApp}>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'nowrap' }}>
+          <Button variant="secondary" size="sm" onClick={handleSendWhatsApp} style={{ whiteSpace: 'nowrap' }}>
             <MessageCircle size={14} style={{ color: '#25D366' }} /> Send on WhatsApp
           </Button>
 
-          <Button variant="secondary" size="sm" onClick={() => window.print()}>
+          <Button variant="secondary" size="sm" onClick={() => window.print()} style={{ whiteSpace: 'nowrap' }}>
             <Printer size={14} /> Print / Save PDF
           </Button>
         </div>
@@ -364,8 +326,8 @@ export function InvoiceDetail() {
           ))}
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '2rem' }}>
-          <div style={{ width: '100%', maxWidth: '320px', backgroundColor: 'var(--surface-muted)', padding: '1rem 1.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
+        <div style={{ width: '100%', marginBottom: '2rem' }}>
+          <div style={{ width: '100%', backgroundColor: 'var(--surface-muted)', padding: '1.25rem 1.5rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.9rem' }}>
               <span>Total Meals Count:</span>
               <strong className="font-mono">{invoice.totalMeals}</strong>
@@ -382,63 +344,21 @@ export function InvoiceDetail() {
               <span>Adjustments:</span>
               <span className="font-mono">₹{invoice.adjustmentAmount.toLocaleString()}</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '0.5rem', borderTop: '1px solid var(--border)', fontSize: '1rem', fontWeight: '600' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '0.65rem', borderTop: '1px solid var(--border)', fontSize: '1rem', fontWeight: '600' }}>
               <span>Total Amount:</span>
               <span className="font-mono">₹{invoice.totalAmount.toLocaleString()}</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.25rem', fontSize: '0.9rem', color: 'var(--success-text)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.35rem', fontSize: '0.9rem', color: 'var(--success-text)' }}>
               <span>Amount Paid:</span>
               <span className="font-mono">₹{invoice.amountPaid.toLocaleString()}</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.25rem', fontSize: '1.05rem', fontWeight: '700', color: invoice.amountDue > 0 ? 'var(--warning-text)' : 'inherit' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.35rem', fontSize: '1.05rem', fontWeight: '700', color: invoice.amountDue > 0 ? 'var(--warning-text)' : 'inherit' }}>
               <span>Amount Due:</span>
               <span className="font-mono">₹{invoice.amountDue.toLocaleString()}</span>
             </div>
           </div>
         </div>
 
-        <div style={{ backgroundColor: 'var(--accent-cream)', color: '#292929', padding: '1.25rem', borderRadius: 'var(--radius-lg)', marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-          <div>
-            <h4 style={{ color: '#292929', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <QrCode size={18} /> Direct UPI Payment (GPay / PhonePe / Paytm)
-            </h4>
-            <p style={{ fontSize: '0.85rem', marginTop: '0.25rem' }}>
-              Payee Name: <strong>{payeeName}</strong>
-            </p>
-            <p className="font-mono" style={{ fontSize: '0.95rem', fontWeight: '600', marginTop: '0.1rem' }}>
-              UPI ID: {upiId}
-            </p>
-          </div>
-
-          {!isFullyPaid && (
-            <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
-              <span style={{ fontSize: '0.8rem', textTransform: 'uppercase' }}>Amount Due to Pay</span>
-              <h3 className="font-mono" style={{ fontSize: '1.4rem', color: 'var(--accent-brown)', marginBottom: '0.2rem' }}>
-                ₹{invoice.amountDue.toLocaleString()}
-              </h3>
-              <a
-                href={upiLink}
-                target="_blank"
-                rel="noreferrer"
-                style={{
-                  backgroundColor: '#2E7D32',
-                  color: '#FFFFFF',
-                  padding: '0.55rem 1.25rem',
-                  borderRadius: '24px',
-                  fontSize: '0.9rem',
-                  fontWeight: '700',
-                  textDecoration: 'none',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.4rem',
-                  boxShadow: '0 3px 8px rgba(46,125,50,0.35)'
-                }}
-              >
-                💳 Pay Now ₹{invoice.amountDue.toLocaleString()}
-              </a>
-            </div>
-          )}
-        </div>
 
         {invoice.payments && invoice.payments.length > 0 && (
           <div style={{ marginTop: '1.5rem' }}>
@@ -564,19 +484,18 @@ export function InvoiceDetail() {
             </span>
           </div>
 
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Payment Method *</label>
-            <select
-              className="select"
-              value={reportMethod}
-              onChange={(e) => setReportMethod(e.target.value)}
-            >
-              <option value="UPI">UPI (Google Pay / PhonePe / Paytm)</option>
-              <option value="CASH">Cash</option>
-              <option value="BANK_TRANSFER">Bank Transfer</option>
-              <option value="OTHER">Other</option>
-            </select>
-          </div>
+          <CustomSelectDropdown
+            label="Payment Method *"
+            value={reportMethod}
+            onChange={setReportMethod}
+            options={[
+              { label: 'UPI (Google Pay / PhonePe / Paytm)', value: 'UPI' },
+              { label: 'Cash', value: 'CASH' },
+              { label: 'Bank Transfer', value: 'BANK_TRANSFER' },
+              { label: 'Other', value: 'OTHER' }
+            ]}
+            minWidth="100%"
+          />
 
           <div className="form-group" style={{ marginBottom: 0 }}>
             <label className="form-label">UPI Transaction ID / UTR (Recommended)</label>

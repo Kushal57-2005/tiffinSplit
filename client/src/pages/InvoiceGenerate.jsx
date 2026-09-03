@@ -7,6 +7,8 @@ import { Button } from '../components/UI/Button';
 import { Badge } from '../components/UI/Badge';
 import { LoadingSpinner } from '../components/UI/LoadingSpinner';
 
+import { CustomSelectDropdown } from '../components/UI/CustomSelectDropdown';
+
 export function InvoiceGenerate() {
   const { activeWorkspaceId, apiFetch } = useAuth();
   const navigate = useNavigate();
@@ -83,34 +85,29 @@ export function InvoiceGenerate() {
       )}
 
       <Card title="Billing Period Selection">
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', alignItems: 'flex-end' }}>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Month</label>
-            <select
-              className="select"
-              value={month}
-              onChange={(e) => setMonth(parseInt(e.target.value))}
-            >
-              {monthNames.map((mName, idx) => (
-                <option key={idx + 1} value={idx + 1}>
-                  {mName}
-                </option>
-              ))}
-            </select>
-          </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', alignItems: 'flex-end' }}>
+          <CustomSelectDropdown
+            label="Month"
+            value={month}
+            onChange={(val) => setMonth(parseInt(val))}
+            options={monthNames.map((mName, idx) => ({
+              label: mName,
+              value: idx + 1
+            }))}
+            minWidth="100%"
+          />
 
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Year</label>
-            <select
-              className="select"
-              value={year}
-              onChange={(e) => setYear(parseInt(e.target.value))}
-            >
-              <option value={2025}>2025</option>
-              <option value={2026}>2026</option>
-              <option value={2027}>2027</option>
-            </select>
-          </div>
+          <CustomSelectDropdown
+            label="Year"
+            value={year}
+            onChange={(val) => setYear(parseInt(val))}
+            options={[
+              { label: '2025', value: 2025 },
+              { label: '2026', value: 2026 },
+              { label: '2027', value: 2027 }
+            ]}
+            minWidth="100%"
+          />
         </div>
       </Card>
 

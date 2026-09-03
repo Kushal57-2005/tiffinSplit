@@ -54,7 +54,7 @@ export function Activity() {
         />
       ) : (
         <Card title="Activity Timeline">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
             {logs.map((log) => {
               const dateStr = new Date(log.createdAt).toLocaleDateString(undefined, {
                 month: 'short',
@@ -64,23 +64,36 @@ export function Activity() {
                 hour: '2-digit',
                 minute: '2-digit'
               });
+              const actionText = formatActivityAction(log.action, log.message);
+              const variant = log.action?.includes('REJECTED')
+                ? 'danger'
+                : log.action?.includes('REPORTED')
+                ? 'warning'
+                : log.action?.includes('VERIFIED')
+                ? 'success'
+                : 'neutral';
 
               return (
-                <div key={log.id} className="timeline-item" style={{ flexDirection: 'column', gap: '0.25rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', flexWrap: 'wrap' }}>
-                    <div className="timeline-dot" />
-                    <strong style={{ fontSize: '0.88rem', fontWeight: '600' }}>
-                      {log.user ? log.user.name : 'System'}
-                    </strong>
-                    <span className="timeline-time text-util" style={{ fontSize: '0.78rem', marginLeft: 'auto' }}>
-                      {dateStr} {timeStr}
-                    </span>
-                    <Badge variant="neutral" style={{ fontSize: '0.7rem' }}>
-                      {formatActivityAction(log.action, log.message)}
-                    </Badge>
+                <div key={log.id} className="timeline-item activity-timeline-item">
+                  <div className="activity-item-header">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <div className="timeline-dot" style={{ marginTop: 0 }} />
+                      <strong style={{ fontSize: '0.88rem', fontWeight: '600' }}>
+                        {log.user ? log.user.name : 'System'}
+                      </strong>
+                    </div>
+
+                    <div className="activity-right-group">
+                      <span className="timeline-time text-util" style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                        {dateStr} {timeStr}
+                      </span>
+                      <Badge variant={variant} className="activity-flag-badge">
+                        {actionText}
+                      </Badge>
+                    </div>
                   </div>
 
-                  <div style={{ paddingLeft: '1.25rem' }}>
+                  <div style={{ paddingLeft: '1.25rem', marginTop: '0.15rem' }}>
                     <p className="text-break" style={{ fontSize: '0.88rem', color: 'var(--text)', margin: 0, lineHeight: 1.4 }}>
                       {formatActivityMessage(log.message)}
                     </p>

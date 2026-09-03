@@ -17,6 +17,8 @@ import { Badge } from "../components/UI/Badge";
 import { LoadingSpinner } from "../components/UI/LoadingSpinner";
 import { parseBulkMealText } from "../utils/bulkParser";
 
+import { CustomSelectDropdown } from "../components/UI/CustomSelectDropdown";
+
 export function MealEntryForm() {
   const { entryId } = useParams();
   const { activeWorkspaceId, apiFetch } = useAuth();
@@ -412,18 +414,17 @@ export function MealEntryForm() {
               </p>
             </div>
 
-            <div className="form-group">
-              <label className="form-label">Default Target Year</label>
-              <select
-                className="select"
-                value={defaultYear}
-                onChange={(e) => setDefaultYear(parseInt(e.target.value, 10))}
-              >
-                <option value={2025}>2025</option>
-                <option value={2026}>2026</option>
-                <option value={2027}>2027</option>
-              </select>
-            </div>
+            <CustomSelectDropdown
+              label="Default Target Year"
+              value={defaultYear}
+              onChange={(val) => setDefaultYear(parseInt(val, 10))}
+              options={[
+                { label: "2025", value: 2025 },
+                { label: "2026", value: 2026 },
+                { label: "2027", value: 2027 }
+              ]}
+              minWidth="100%"
+            />
 
             <div className="form-group">
               <label className="form-label">Fast Entry Text *</label>

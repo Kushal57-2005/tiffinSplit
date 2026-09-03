@@ -1,15 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react';
 
-export function DateRangePicker({ startDate, endDate, onChange, label }) {
+export function DateRangePicker({ startDate, endDate, onChange }) {
   const [isOpen, setIsOpen] = useState(false);
 
   // Temporary selection state inside popover
   const [tempStart, setTempStart] = useState(startDate || '');
   const [tempEnd, setTempEnd] = useState(endDate || '');
   const [hoverDate, setHoverDate] = useState('');
-  const [isDragging, setIsDragging] = useState(false);
-  const [activePreset, setActivePreset] = useState(label || 'All time');
+  const [dragStart, setDragStart] = useState(null);
 
   // Month navigation: viewMonth is Date object representing left calendar month
   const [viewMonth, setViewMonth] = useState(() => {
@@ -37,16 +36,14 @@ export function DateRangePicker({ startDate, endDate, onChange, label }) {
     }
 
     function handleGlobalMouseUp() {
-      if (isDragging) {
-        setIsDragging(false);
-        if (tempStart && hoverDate && !tempEnd) {
-          if (hoverDate >= tempStart) {
-            setTempEnd(hoverDate);
-          } else {
-            setTempEnd(tempStart);
-            setTempStart(hoverDate);
-          }
+      if (dragStart) {
+        if (hoverDate && hoverDate !== dragStart) {
+          const min = dragStart < hoverDate ? dragStart : hoverDate;
+          const max = dragStart > hoverDate ? dragStart : hoverDate;
+          setTempStart(min);
+          setTempEnd(max);
         }
+        setDragStart(null);
         setHoverDate('');
       }
     }
@@ -57,7 +54,7 @@ export function DateRangePicker({ startDate, endDate, onChange, label }) {
       document.removeEventListener('mousedown', handleClickOutside);
       window.removeEventListener('mouseup', handleGlobalMouseUp);
     };
-  }, [isDragging, tempStart, hoverDate, tempEnd]);
+  }, [dragStart, hoverDate]);
 
   const formatDateLabel = (dStr) => {
     if (!dStr) return '';
@@ -72,9 +69,6 @@ export function DateRangePicker({ startDate, endDate, onChange, label }) {
   };
 
   const getDisplayText = () => {
-    if (activePreset && activePreset !== 'Custom Range' && activePreset !== 'All time') {
-      return activePreset;
-    }
     if (startDate && endDate) {
       if (startDate === endDate) {
         return formatDateLabel(startDate);
@@ -86,117 +80,54 @@ export function DateRangePicker({ startDate, endDate, onChange, label }) {
     return 'Select date range';
   };
 
-  const applyPreset = (presetKey) => {
-    const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
-
-    let start = '';
-    let end = '';
-
-    if (presetKey === 'Today') {
-      start = todayStr;
-      end = todayStr;
-    } else if (presetKey === 'Yesterday') {
-      const y = new Date(today);
-      y.setDate(y.getDate() - 1);
-      const yStr = y.toISOString().split('T')[0];
-      start = yStr;
-      end = yStr;
-    } else if (presetKey === 'This week') {
-      const dayOfWeek = today.getDay();
-      const s = new Date(today);
-      s.setDate(today.getDate() - dayOfWeek);
-      start = s.toISOString().split('T')[0];
-      end = todayStr;
-    } else if (presetKey === 'Last week') {
-      const dayOfWeek = today.getDay();
-      const e = new Date(today);
-      e.setDate(today.getDate() - dayOfWeek - 1);
-      const s = new Date(e);
-      s.setDate(e.getDate() - 6);
-      start = s.toISOString().split('T')[0];
-      end = e.toISOString().split('T')[0];
-    } else if (presetKey === 'This month') {
-      const s = new Date(today.getFullYear(), today.getMonth(), 1);
-      const e = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-      start = s.toISOString().split('T')[0];
-      end = e.toISOString().split('T')[0];
-    } else if (presetKey === 'Last month') {
-      const s = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-      const e = new Date(today.getFullYear(), today.getMonth(), 0);
-      start = s.toISOString().split('T')[0];
-      end = e.toISOString().split('T')[0];
-    } else if (presetKey === 'This year') {
-      const s = new Date(today.getFullYear(), 0, 1);
-      const e = new Date(today.getFullYear(), 11, 31);
-      start = s.toISOString().split('T')[0];
-      end = e.toISOString().split('T')[0];
-    } else if (presetKey === 'Last year') {
-      const s = new Date(today.getFullYear() - 1, 0, 1);
-      const e = new Date(today.getFullYear() - 1, 11, 31);
-      start = s.toISOString().split('T')[0];
-      end = e.toISOString().split('T')[0];
-    } else if (presetKey === 'All time') {
-      start = '';
-      end = '';
-    }
-
-    setTempStart(start);
-    setTempEnd(end);
-    setHoverDate('');
-    setActivePreset(presetKey);
-
-    if (presetKey !== 'Custom Range') {
-      onChange({ startDate: start, endDate: end, label: presetKey });
-      setIsOpen(false);
-    }
-  };
-
   const handleDateMouseDown = (dateStr) => {
-    setActivePreset('Custom Range');
-    setIsDragging(true);
-    setTempStart(dateStr);
-    setTempEnd('');
+    setDragStart(dateStr);
     setHoverDate(dateStr);
+    if (!tempStart || (tempStart && tempEnd)) {
+      setTempStart(dateStr);
+      setTempEnd('');
+    }
   };
 
   const handleDateMouseEnter = (dateStr) => {
-    if (tempStart && !tempEnd) {
+    if (dragStart || (tempStart && !tempEnd)) {
       setHoverDate(dateStr);
     }
   };
 
   const handleDateMouseUp = (dateStr) => {
-    if (isDragging) {
-      setIsDragging(false);
-      if (tempStart) {
-        if (dateStr >= tempStart) {
+    if (dragStart) {
+      if (dragStart !== dateStr) {
+        if (dateStr >= dragStart) {
+          setTempStart(dragStart);
           setTempEnd(dateStr);
         } else {
-          setTempEnd(tempStart);
           setTempStart(dateStr);
+          setTempEnd(dragStart);
         }
-      }
-      setHoverDate('');
-    }
-  };
-
-  const handleDateClick = (dateStr) => {
-    setActivePreset('Custom Range');
-    if (!isDragging) {
-      if (!tempStart || (tempStart && tempEnd)) {
-        setTempStart(dateStr);
-        setTempEnd('');
-        setHoverDate('');
-      } else if (tempStart && !tempEnd) {
-        if (dateStr >= tempStart) {
-          setTempEnd(dateStr);
-        } else {
+      } else {
+        if (!tempStart || (tempStart && tempEnd) || tempStart === dateStr) {
           setTempStart(dateStr);
           setTempEnd('');
+        } else if (tempStart && !tempEnd) {
+          if (dateStr >= tempStart) {
+            setTempEnd(dateStr);
+          } else {
+            setTempEnd(tempStart);
+            setTempStart(dateStr);
+          }
         }
-        setHoverDate('');
       }
+      setDragStart(null);
+      setHoverDate('');
+    } else if (tempStart && !tempEnd) {
+      if (dateStr >= tempStart) {
+        setTempEnd(dateStr);
+      } else {
+        setTempEnd(tempStart);
+        setTempStart(dateStr);
+      }
+      setHoverDate('');
     }
   };
 
@@ -204,13 +135,15 @@ export function DateRangePicker({ startDate, endDate, onChange, label }) {
     let finalStart = tempStart;
     let finalEnd = tempEnd;
 
-    if (finalStart && finalEnd && finalStart > finalEnd) {
+    if (!finalEnd && finalStart) {
+      finalEnd = finalStart;
+    } else if (finalStart && finalEnd && finalStart > finalEnd) {
       const swap = finalStart;
       finalStart = finalEnd;
       finalEnd = swap;
     }
 
-    onChange({ startDate: finalStart, endDate: finalEnd, label: activePreset });
+    onChange({ startDate: finalStart, endDate: finalEnd, label: 'Custom range' });
     setIsOpen(false);
   };
 
@@ -228,12 +161,10 @@ export function DateRangePicker({ startDate, endDate, onChange, label }) {
     const daysInMonth = new Date(year, month + 1, 0).getDate();
 
     const days = [];
-    // Padding from previous month
     const prevMonthDays = new Date(year, month, 0).getDate();
     for (let i = firstDay - 1; i >= 0; i--) {
       days.push({ day: prevMonthDays - i, current: false, dateStr: null });
     }
-    // Days in current month
     for (let d = 1; d <= daysInMonth; d++) {
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
       days.push({ day: d, current: true, dateStr });
@@ -244,18 +175,6 @@ export function DateRangePicker({ startDate, endDate, onChange, label }) {
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
-  ];
-
-  const presets = [
-    'Today',
-    'Yesterday',
-    'This week',
-    'Last week',
-    'This month',
-    'Last month',
-    'This year',
-    'Last year',
-    'All time'
   ];
 
   // Calculate left and right months
@@ -291,9 +210,14 @@ export function DateRangePicker({ startDate, endDate, onChange, label }) {
     return dateStr === tempStart || dateStr === effectiveEnd;
   };
 
+  const isRangeActive = Boolean(startDate || endDate);
+
+  const now = new Date();
+  const todayYYYYMMDD = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
   return (
     <div ref={containerRef} style={{ position: 'relative', display: 'inline-block' }}>
-      {/* Trigger Button */}
+      {/* Trigger Button (Uses Theme CSS Variables for Light & Dark Mode) */}
       <button
         type="button"
         className="btn btn-secondary"
@@ -306,80 +230,39 @@ export function DateRangePicker({ startDate, endDate, onChange, label }) {
           fontSize: '0.88rem',
           fontWeight: '500',
           backgroundColor: 'var(--surface)',
-          borderColor: isOpen ? '#7F56D9' : 'var(--border)',
-          boxShadow: isOpen ? '0 0 0 3px rgba(127, 86, 217, 0.15)' : 'none',
-          color: 'var(--text)',
-          borderRadius: 'var(--radius-md)'
+          border: isOpen ? '2px solid var(--text)' : isRangeActive ? '1.5px solid var(--brown)' : '1px solid var(--border)',
+          color: isRangeActive ? 'var(--brown)' : 'var(--text)',
+          borderRadius: '12px',
+          cursor: 'pointer',
+          boxShadow: isOpen ? '0 0 0 3px rgba(148, 109, 109, 0.15)' : 'none',
+          transition: 'all 0.15s ease'
         }}
       >
-        <CalendarIcon size={16} style={{ color: '#7F56D9' }} />
-        <span>{getDisplayText()}</span>
-        {isOpen ? <ChevronUp size={16} style={{ color: 'var(--text-muted)' }} /> : <ChevronDown size={16} style={{ color: 'var(--text-muted)' }} />}
+        <CalendarIcon size={16} style={{ color: isRangeActive ? 'var(--brown)' : 'var(--text-muted)' }} />
+        <span style={{ fontWeight: isRangeActive ? '600' : '500' }}>{getDisplayText()}</span>
+        {isOpen ? (
+          <ChevronUp size={16} style={{ color: 'var(--text)' }} />
+        ) : (
+          <ChevronDown size={16} style={{ color: 'var(--text-muted)' }} />
+        )}
       </button>
 
-      {/* Popover Dropdown Menu (Untitled UI Style) */}
+      {/* Popover Dropdown Menu (Uses Theme Surface & Border Variables) */}
       {isOpen && (
         <div
-          style={{
-            position: 'absolute',
-            top: 'calc(100% + 6px)',
-            left: 0,
-            zIndex: 1000,
-            backgroundColor: 'var(--surface)',
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--radius-lg)',
-            boxShadow: '0 12px 32px rgba(0, 0, 0, 0.12)',
-            display: 'flex',
-            flexDirection: 'column',
-            width: 'max-content',
-            maxWidth: '92vw',
-            overflow: 'hidden'
-          }}
+          className="date-range-popover"
         >
           <div className="date-picker-body" style={{ display: 'flex', flexWrap: 'wrap' }}>
-            {/* Left Sidebar Presets */}
+            {/* Calendar Grid Container */}
             <div
-              style={{
-                width: '140px',
-                borderRight: '1px solid var(--border)',
-                padding: '0.75rem 0.5rem',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.2rem',
-                backgroundColor: 'var(--surface-muted)'
-              }}
-            >
-              {presets.map((preset) => (
-                <button
-                  key={preset}
-                  type="button"
-                  onClick={() => applyPreset(preset)}
-                  style={{
-                    textAlign: 'left',
-                    padding: '0.4rem 0.65rem',
-                    fontSize: '0.82rem',
-                    borderRadius: 'var(--radius-sm)',
-                    border: 'none',
-                    backgroundColor: activePreset === preset ? '#F9F5FF' : 'transparent',
-                    color: activePreset === preset ? '#7F56D9' : 'var(--text)',
-                    cursor: 'pointer',
-                    fontWeight: activePreset === preset ? '600' : '400'
-                  }}
-                >
-                  {preset}
-                </button>
-              ))}
-            </div>
-
-            {/* Calendar Grid Container (1 or 2 months) */}
-            <div
+              className="date-picker-grid-container"
               onMouseLeave={() => {
-                if (!isDragging) setHoverDate('');
+                if (!dragStart) setHoverDate('');
               }}
               style={{ padding: '1rem', display: 'flex', gap: '1.5rem', flexWrap: 'wrap', userSelect: 'none' }}
             >
               {/* Left Month Calendar */}
-              <div style={{ width: '230px' }}>
+              <div className="date-picker-month" style={{ width: '230px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                   <button
                     type="button"
@@ -388,7 +271,7 @@ export function DateRangePicker({ startDate, endDate, onChange, label }) {
                   >
                     <ChevronLeft size={18} />
                   </button>
-                  <strong style={{ fontSize: '0.9rem' }}>
+                  <strong style={{ fontSize: '0.9rem', color: 'var(--text)' }}>
                     {monthNames[leftMonth]} {leftYear}
                   </strong>
                   <div style={{ width: 18 }} />
@@ -402,13 +285,38 @@ export function DateRangePicker({ startDate, endDate, onChange, label }) {
                   ))}
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px', textAlign: 'center' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0', textAlign: 'center' }}>
                   {leftDays.map((item, idx) => {
                     if (!item.current) {
-                      return <div key={idx} style={{ height: '30px' }} />;
+                      return <div key={idx} style={{ height: '32px' }} />;
                     }
+                    const effectiveEnd = getEffectiveEnd();
+                    const isStart = Boolean(tempStart && item.dateStr === tempStart);
+                    const isEnd = Boolean(effectiveEnd && item.dateStr === effectiveEnd);
                     const isSelected = isSelectedRange(item.dateStr);
-                    const isEndpoint = isStartOrEndDate(item.dateStr);
+                    const hasRange = Boolean(tempStart && effectiveEnd && tempStart !== effectiveEnd);
+                    const isEndpoint = isStart || isEnd;
+                    const isToday = item.dateStr === todayYYYYMMDD;
+
+                    const dayOfWeek = new Date(item.dateStr + 'T00:00:00').getDay();
+
+                    let ribbonLeft = '0';
+                    let ribbonRight = '0';
+                    let showRibbon = isSelected && hasRange;
+
+                    if (showRibbon) {
+                      if (isStart) {
+                        ribbonLeft = '50%';
+                        ribbonRight = '0';
+                      } else if (isEnd) {
+                        ribbonLeft = '0';
+                        ribbonRight = '50%';
+                      }
+                    }
+
+                    const ribbonBorderRadiusLeft = (dayOfWeek === 0 || isStart) ? '8px' : '0';
+                    const ribbonBorderRadiusRight = (dayOfWeek === 6 || isEnd) ? '8px' : '0';
+                    const ribbonBorderRadius = `${ribbonBorderRadiusLeft} ${ribbonBorderRadiusRight} ${ribbonBorderRadiusRight} ${ribbonBorderRadiusLeft}`;
 
                     return (
                       <div
@@ -416,22 +324,62 @@ export function DateRangePicker({ startDate, endDate, onChange, label }) {
                         onMouseDown={() => handleDateMouseDown(item.dateStr)}
                         onMouseEnter={() => handleDateMouseEnter(item.dateStr)}
                         onMouseUp={() => handleDateMouseUp(item.dateStr)}
-                        onClick={() => handleDateClick(item.dateStr)}
                         style={{
-                          height: '30px',
+                          position: 'relative',
+                          height: '32px',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          fontSize: '0.82rem',
                           cursor: 'pointer',
-                          backgroundColor: isEndpoint ? '#7F56D9' : isSelected ? '#F9F5FF' : 'transparent',
-                          color: isEndpoint ? '#FFFFFF' : isSelected ? '#7F56D9' : 'var(--text)',
-                          borderRadius: isEndpoint ? '50%' : '0',
-                          fontWeight: isEndpoint ? '700' : '400',
-                          transition: 'background-color 0.1s ease'
+                          userSelect: 'none'
                         }}
                       >
-                        {item.day}
+                        {showRibbon && (
+                          <div
+                            style={{
+                              position: 'absolute',
+                              top: 0,
+                              bottom: 0,
+                              left: ribbonLeft,
+                              right: ribbonRight,
+                              backgroundColor: 'var(--surface-muted)',
+                              borderRadius: ribbonBorderRadius,
+                              zIndex: 0
+                            }}
+                          />
+                        )}
+                        <div
+                          style={{
+                            position: 'relative',
+                            zIndex: 1,
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '50%',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '0.82rem',
+                            backgroundColor: isEndpoint ? 'var(--brown)' : 'transparent',
+                            color: isEndpoint ? 'var(--text-inverse)' : isSelected ? 'var(--brown)' : 'var(--text)',
+                            fontWeight: isEndpoint || isToday ? '700' : isSelected ? '600' : '400',
+                            transition: 'all 0.1s ease'
+                          }}
+                        >
+                          <span style={{ lineHeight: 1 }}>{item.day}</span>
+                          {isToday && (
+                            <div
+                              style={{
+                                position: 'absolute',
+                                bottom: '2px',
+                                width: '4px',
+                                height: '4px',
+                                borderRadius: '50%',
+                                backgroundColor: isEndpoint ? 'var(--text-inverse)' : 'var(--brown)'
+                              }}
+                            />
+                          )}
+                        </div>
                       </div>
                     );
                   })}
@@ -439,10 +387,10 @@ export function DateRangePicker({ startDate, endDate, onChange, label }) {
               </div>
 
               {/* Right Month Calendar (Desktop View) */}
-              <div className="desktop-only-calendar" style={{ width: '230px' }}>
+              <div className="desktop-only-calendar date-picker-month" style={{ width: '230px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                   <div style={{ width: 18 }} />
-                  <strong style={{ fontSize: '0.9rem' }}>
+                  <strong style={{ fontSize: '0.9rem', color: 'var(--text)' }}>
                     {monthNames[rightMonth]} {rightYear}
                   </strong>
                   <button
@@ -462,13 +410,38 @@ export function DateRangePicker({ startDate, endDate, onChange, label }) {
                   ))}
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px', textAlign: 'center' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0', textAlign: 'center' }}>
                   {rightDays.map((item, idx) => {
                     if (!item.current) {
-                      return <div key={idx} style={{ height: '30px' }} />;
+                      return <div key={idx} style={{ height: '32px' }} />;
                     }
+                    const effectiveEnd = getEffectiveEnd();
+                    const isStart = Boolean(tempStart && item.dateStr === tempStart);
+                    const isEnd = Boolean(effectiveEnd && item.dateStr === effectiveEnd);
                     const isSelected = isSelectedRange(item.dateStr);
-                    const isEndpoint = isStartOrEndDate(item.dateStr);
+                    const hasRange = Boolean(tempStart && effectiveEnd && tempStart !== effectiveEnd);
+                    const isEndpoint = isStart || isEnd;
+                    const isToday = item.dateStr === todayYYYYMMDD;
+
+                    const dayOfWeek = new Date(item.dateStr + 'T00:00:00').getDay();
+
+                    let ribbonLeft = '0';
+                    let ribbonRight = '0';
+                    let showRibbon = isSelected && hasRange;
+
+                    if (showRibbon) {
+                      if (isStart) {
+                        ribbonLeft = '50%';
+                        ribbonRight = '0';
+                      } else if (isEnd) {
+                        ribbonLeft = '0';
+                        ribbonRight = '50%';
+                      }
+                    }
+
+                    const ribbonBorderRadiusLeft = (dayOfWeek === 0 || isStart) ? '8px' : '0';
+                    const ribbonBorderRadiusRight = (dayOfWeek === 6 || isEnd) ? '8px' : '0';
+                    const ribbonBorderRadius = `${ribbonBorderRadiusLeft} ${ribbonBorderRadiusRight} ${ribbonBorderRadiusRight} ${ribbonBorderRadiusLeft}`;
 
                     return (
                       <div
@@ -476,22 +449,62 @@ export function DateRangePicker({ startDate, endDate, onChange, label }) {
                         onMouseDown={() => handleDateMouseDown(item.dateStr)}
                         onMouseEnter={() => handleDateMouseEnter(item.dateStr)}
                         onMouseUp={() => handleDateMouseUp(item.dateStr)}
-                        onClick={() => handleDateClick(item.dateStr)}
                         style={{
-                          height: '30px',
+                          position: 'relative',
+                          height: '32px',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          fontSize: '0.82rem',
                           cursor: 'pointer',
-                          backgroundColor: isEndpoint ? '#7F56D9' : isSelected ? '#F9F5FF' : 'transparent',
-                          color: isEndpoint ? '#FFFFFF' : isSelected ? '#7F56D9' : 'var(--text)',
-                          borderRadius: isEndpoint ? '50%' : '0',
-                          fontWeight: isEndpoint ? '700' : '400',
-                          transition: 'background-color 0.1s ease'
+                          userSelect: 'none'
                         }}
                       >
-                        {item.day}
+                        {showRibbon && (
+                          <div
+                            style={{
+                              position: 'absolute',
+                              top: 0,
+                              bottom: 0,
+                              left: ribbonLeft,
+                              right: ribbonRight,
+                              backgroundColor: 'var(--surface-muted)',
+                              borderRadius: ribbonBorderRadius,
+                              zIndex: 0
+                            }}
+                          />
+                        )}
+                        <div
+                          style={{
+                            position: 'relative',
+                            zIndex: 1,
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '50%',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '0.82rem',
+                            backgroundColor: isEndpoint ? 'var(--brown)' : 'transparent',
+                            color: isEndpoint ? 'var(--text-inverse)' : isSelected ? 'var(--brown)' : 'var(--text)',
+                            fontWeight: isEndpoint || isToday ? '700' : isSelected ? '600' : '400',
+                            transition: 'all 0.1s ease'
+                          }}
+                        >
+                          <span style={{ lineHeight: 1 }}>{item.day}</span>
+                          {isToday && (
+                            <div
+                              style={{
+                                position: 'absolute',
+                                bottom: '2px',
+                                width: '4px',
+                                height: '4px',
+                                borderRadius: '50%',
+                                backgroundColor: isEndpoint ? 'var(--text-inverse)' : 'var(--brown)'
+                              }}
+                            />
+                          )}
+                        </div>
                       </div>
                     );
                   })}
@@ -502,6 +515,7 @@ export function DateRangePicker({ startDate, endDate, onChange, label }) {
 
           {/* Bottom Bar Input Preview & Action Buttons */}
           <div
+            className="date-picker-bottom-bar"
             style={{
               borderTop: '1px solid var(--border)',
               padding: '0.75rem 1rem',
@@ -518,8 +532,8 @@ export function DateRangePicker({ startDate, endDate, onChange, label }) {
                 type="text"
                 readOnly
                 placeholder="D / M / YYYY"
-                className="input font-mono"
-                style={{ width: '105px', padding: '0.3rem 0.45rem', fontSize: '0.8rem', textAlign: 'center' }}
+                className="input font-mono date-picker-bottom-input"
+                style={{ width: '105px', padding: '0.3rem 0.45rem', fontSize: '0.8rem', textAlign: 'center', borderRadius: '8px', backgroundColor: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)' }}
                 value={formatShortInputDate(tempStart)}
               />
               <span style={{ color: 'var(--text-muted)' }}>–</span>
@@ -527,9 +541,9 @@ export function DateRangePicker({ startDate, endDate, onChange, label }) {
                 type="text"
                 readOnly
                 placeholder="D / M / YYYY"
-                className="input font-mono"
-                style={{ width: '105px', padding: '0.3rem 0.45rem', fontSize: '0.8rem', textAlign: 'center' }}
-                value={formatShortInputDate(tempEnd || (tempStart && hoverDate ? hoverDate : ''))}
+                className="input font-mono date-picker-bottom-input"
+                style={{ width: '105px', padding: '0.3rem 0.45rem', fontSize: '0.8rem', textAlign: 'center', borderRadius: '8px', backgroundColor: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)' }}
+                value={formatShortInputDate(getEffectiveEnd())}
               />
             </div>
 
@@ -538,7 +552,7 @@ export function DateRangePicker({ startDate, endDate, onChange, label }) {
                 type="button"
                 className="btn btn-secondary"
                 onClick={() => setIsOpen(false)}
-                style={{ padding: '0.35rem 0.75rem', fontSize: '0.82rem' }}
+                style={{ padding: '0.4rem 0.85rem', fontSize: '0.82rem', borderRadius: '8px' }}
               >
                 Cancel
               </button>
@@ -547,11 +561,13 @@ export function DateRangePicker({ startDate, endDate, onChange, label }) {
                 className="btn btn-primary"
                 onClick={handleApply}
                 style={{
-                  padding: '0.35rem 0.85rem',
+                  padding: '0.4rem 0.95rem',
                   fontSize: '0.82rem',
-                  backgroundColor: '#7F56D9',
-                  borderColor: '#7F56D9',
-                  color: '#FFFFFF'
+                  backgroundColor: 'var(--brown)',
+                  borderColor: 'var(--brown)',
+                  color: 'var(--text-inverse)',
+                  borderRadius: '8px',
+                  fontWeight: '600'
                 }}
               >
                 Apply

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { UtensilsCrossed, Plus, Edit3, Trash2, FileText, X, ChevronDown, ChevronUp, Check } from 'lucide-react';
+import { UtensilsCrossed, Plus, Edit3, Trash2, FileText, X, ChevronDown, ChevronUp, Check, Filter, SearchX } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Card } from '../components/UI/Card';
 import { Button } from '../components/UI/Button';
@@ -9,104 +9,7 @@ import { EmptyState } from '../components/UI/EmptyState';
 import { LoadingSpinner } from '../components/UI/LoadingSpinner';
 import { BulkMealModal } from '../components/BulkMealModal';
 import { DateRangePicker } from '../components/UI/DateRangePicker';
-
-function SortByDropdown({ value, onChange }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const ref = useRef(null);
-
-  useEffect(() => {
-    function handleClickOutside(e) {
-      if (ref.current && !ref.current.contains(e.target)) setIsOpen(false);
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  return (
-    <div ref={ref} style={{ position: 'relative', display: 'flex', flexDirection: 'column' }}>
-      <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: '500', marginBottom: '0.25rem' }}>
-        Sort by
-      </label>
-      <button
-        type="button"
-        className="btn btn-secondary"
-        onClick={() => setIsOpen(!isOpen)}
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '0.5rem',
-          padding: '0.45rem 0.75rem',
-          fontSize: '0.85rem',
-          fontWeight: '500',
-          backgroundColor: 'var(--surface)',
-          borderColor: isOpen ? '#7F56D9' : 'var(--border)',
-          borderRadius: 'var(--radius-md)'
-        }}
-      >
-        <span>{value === 'DESC' ? 'Descending' : 'Ascending'}</span>
-        {isOpen ? <ChevronUp size={16} style={{ color: 'var(--text-muted)' }} /> : <ChevronDown size={16} style={{ color: 'var(--text-muted)' }} />}
-      </button>
-
-      {isOpen && (
-        <div
-          style={{
-            position: 'absolute',
-            top: 'calc(100% + 4px)',
-            left: 0,
-            zIndex: 1000,
-            backgroundColor: 'var(--surface)',
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--radius-md)',
-            boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-            minWidth: '150px',
-            padding: '0.35rem 0'
-          }}
-        >
-          <button
-            type="button"
-            onClick={() => { onChange('DESC'); setIsOpen(false); }}
-            style={{
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '0.45rem 0.75rem',
-              fontSize: '0.82rem',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              color: value === 'DESC' ? '#7F56D9' : 'var(--text)',
-              fontWeight: value === 'DESC' ? '600' : '400'
-            }}
-          >
-            <span>Descending</span>
-            {value === 'DESC' && <Check size={15} style={{ color: '#7F56D9' }} />}
-          </button>
-          <button
-            type="button"
-            onClick={() => { onChange('ASC'); setIsOpen(false); }}
-            style={{
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '0.45rem 0.75rem',
-              fontSize: '0.82rem',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              color: value === 'ASC' ? '#7F56D9' : 'var(--text)',
-              fontWeight: value === 'ASC' ? '600' : '400'
-            }}
-          >
-            <span>Ascending</span>
-            {value === 'ASC' && <Check size={15} style={{ color: '#7F56D9' }} />}
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
+import { CustomSelectDropdown } from '../components/UI/CustomSelectDropdown';
 
 export function MealEntries() {
   const { activeWorkspaceId, apiFetch } = useAuth();
@@ -118,7 +21,7 @@ export function MealEntries() {
   // Filters & Sorting state
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [dateRangeLabel, setDateRangeLabel] = useState('All time');
+  const [quickRange, setQuickRange] = useState('');
   const [mealTypeFilter, setMealTypeFilter] = useState('');
   const [sortOrder, setSortOrder] = useState('DESC');
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
@@ -147,15 +50,78 @@ export function MealEntries() {
     fetchEntries();
   }, [activeWorkspaceId, mealTypeFilter]);
 
-  const handleDateRangeChange = ({ startDate: s, endDate: e, label }) => {
+  const toLocalYYYYMMDD = (d) => {
+    if (!d) return '';
+    if (typeof d === 'string') {
+      return d.split('T')[0];
+    }
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const handleQuickRangeChange = (presetKey) => {
+    setQuickRange(presetKey);
+    if (!presetKey) {
+      setStartDate('');
+      setEndDate('');
+      return;
+    }
+
+    const today = new Date();
+    const todayStr = toLocalYYYYMMDD(today);
+
+    let start = '';
+    let end = '';
+
+    if (presetKey === 'Today') {
+      start = todayStr;
+      end = todayStr;
+    } else if (presetKey === 'Yesterday') {
+      const y = new Date(today);
+      y.setDate(y.getDate() - 1);
+      start = toLocalYYYYMMDD(y);
+      end = start;
+    } else if (presetKey === 'This week') {
+      const dayOfWeek = today.getDay();
+      const s = new Date(today);
+      s.setDate(today.getDate() - dayOfWeek);
+      start = toLocalYYYYMMDD(s);
+      end = todayStr;
+    } else if (presetKey === 'Last week') {
+      const dayOfWeek = today.getDay();
+      const e = new Date(today);
+      e.setDate(today.getDate() - dayOfWeek - 1);
+      const s = new Date(e);
+      s.setDate(e.getDate() - 6);
+      start = toLocalYYYYMMDD(s);
+      end = toLocalYYYYMMDD(e);
+    } else if (presetKey === 'This month') {
+      const s = new Date(today.getFullYear(), today.getMonth(), 1);
+      const e = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+      start = toLocalYYYYMMDD(s);
+      end = toLocalYYYYMMDD(e);
+    } else if (presetKey === 'Last month') {
+      const s = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+      const e = new Date(today.getFullYear(), today.getMonth(), 0);
+      start = toLocalYYYYMMDD(s);
+      end = toLocalYYYYMMDD(e);
+    }
+
+    setStartDate(start);
+    setEndDate(end);
+  };
+
+  const handleDateRangeChange = ({ startDate: s, endDate: e }) => {
     setStartDate(s);
     setEndDate(e);
-    setDateRangeLabel(label);
+    setQuickRange('');
   };
 
   const filteredEntries = entries
     .filter((entry) => {
-      const entryDateStr = new Date(entry.entryDate).toISOString().split('T')[0];
+      const entryDateStr = toLocalYYYYMMDD(entry.entryDate);
       if (startDate && entryDateStr < startDate) return false;
       if (endDate && entryDateStr > endDate) return false;
       return true;
@@ -184,6 +150,27 @@ export function MealEntries() {
     }
   };
 
+  const sortOptions = [
+    { label: 'Descending', value: 'DESC' },
+    { label: 'Ascending', value: 'ASC' }
+  ];
+
+  const mealTypeOptions = [
+    { label: 'All Meal Types', value: '' },
+    { label: 'Morning Only', value: 'MORNING' },
+    { label: 'Night Only', value: 'NIGHT' }
+  ];
+
+  const quickRangeOptions = [
+    { label: 'All time', value: '' },
+    { label: 'Today', value: 'Today' },
+    { label: 'Yesterday', value: 'Yesterday' },
+    { label: 'This week', value: 'This week' },
+    { label: 'Last week', value: 'Last week' },
+    { label: 'This month', value: 'This month' },
+    { label: 'Last month', value: 'Last month' }
+  ];
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
@@ -194,14 +181,10 @@ export function MealEntries() {
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', width: '100%', maxWidth: '360px' }}>
-          <Button variant="secondary" onClick={() => setIsBulkModalOpen(true)} style={{ flex: 1 }}>
-            <FileText size={16} />
-            <span>Bulk Import</span>
-          </Button>
-          <Button onClick={() => navigate('/entries/new')} style={{ flex: 1 }}>
+        <div>
+          <Button onClick={() => navigate('/entries/new')}>
             <Plus size={16} />
-            <span>+ Add Meal</span>
+            <span>Add Meal</span>
           </Button>
         </div>
       </div>
@@ -209,52 +192,58 @@ export function MealEntries() {
       <Card>
         <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.85rem' }}>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.85rem', flexWrap: 'wrap', flex: 1 }}>
-            {/* Sort by Dropdown (Untitled UI Style) */}
-            <SortByDropdown value={sortOrder} onChange={setSortOrder} />
+            {/* Custom Sort by Dropdown */}
+            <CustomSelectDropdown
+              label="Sort by"
+              value={sortOrder}
+              onChange={setSortOrder}
+              options={sortOptions}
+              minWidth="145px"
+            />
 
-            {/* Meal Type Selector */}
+            {/* Custom Meal Type Dropdown */}
+            <CustomSelectDropdown
+              label="Meal Type"
+              value={mealTypeFilter}
+              onChange={setMealTypeFilter}
+              options={mealTypeOptions}
+              minWidth="150px"
+            />
+
+            {/* Custom Quick Presets Dropdown */}
+            <CustomSelectDropdown
+              label="Quick Presets"
+              value={quickRange}
+              onChange={handleQuickRangeChange}
+              options={quickRangeOptions}
+              minWidth="145px"
+            />
+
+            {/* Custom Date Range Picker Dropdown (Clean Calendar View) */}
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: '500', marginBottom: '0.25rem' }}>
-                Meal Type
-              </label>
-              <select
-                className="select"
-                style={{ width: 'auto', minWidth: '135px', padding: '0.45rem 0.75rem', fontSize: '0.85rem' }}
-                value={mealTypeFilter}
-                onChange={(e) => setMealTypeFilter(e.target.value)}
-              >
-                <option value="">All Meal Types</option>
-                <option value="MORNING">Morning Only</option>
-                <option value="NIGHT">Night Only</option>
-              </select>
-            </div>
-
-            {/* Date Range Picker Dropdown */}
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: '500', marginBottom: '0.25rem' }}>
-                Date Range
+                Custom Date Range
               </label>
               <DateRangePicker
                 startDate={startDate}
                 endDate={endDate}
-                label={dateRangeLabel}
                 onChange={handleDateRangeChange}
               />
             </div>
 
             {/* Clear All Button */}
-            {(startDate || endDate || mealTypeFilter || sortOrder !== 'DESC') && (
+            {(startDate || endDate || quickRange || mealTypeFilter || sortOrder !== 'DESC') && (
               <button
                 type="button"
                 className="btn btn-secondary"
                 onClick={() => {
                   setStartDate('');
                   setEndDate('');
-                  setDateRangeLabel('All time');
+                  setQuickRange('');
                   setMealTypeFilter('');
                   setSortOrder('DESC');
                 }}
-                style={{ padding: '0.45rem 0.75rem', fontSize: '0.85rem' }}
+                style={{ padding: '0.45rem 0.75rem', fontSize: '0.85rem', borderRadius: '12px' }}
               >
                 Clear all
               </button>
@@ -273,35 +262,30 @@ export function MealEntries() {
         <EmptyState
           icon={UtensilsCrossed}
           title="No meal entries recorded yet"
-          description="Click + Add Meal Entry or Bulk Import to log morning and night tiffins for household friends."
+          description="Click Add Meal to log morning and night tiffins for household friends."
           action={
-            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-              <Button variant="secondary" onClick={() => setIsBulkModalOpen(true)}>
-                <FileText size={16} />
-                <span>Bulk Import</span>
-              </Button>
-              <Button onClick={() => navigate('/entries/new')}>
-                <Plus size={16} />
-                <span>+ Add First Meal</span>
-              </Button>
-            </div>
+            <Button onClick={() => navigate('/entries/new')}>
+              <Plus size={16} />
+              <span>Add First Meal</span>
+            </Button>
           }
         />
       ) : filteredEntries.length === 0 ? (
         <EmptyState
-          icon={Filter}
-          title="No meal entries match selected filters"
-          description="Try adjusting your date range, month, year, or meal type filter settings."
+          icon={SearchX}
+          title="No entries found"
+          description="No meal entries match your selected date range or filter settings."
           action={
             <Button
               variant="secondary"
               onClick={() => {
                 setStartDate('');
                 setEndDate('');
-                setDateRangeLabel('All time');
+                setQuickRange('');
                 setMealTypeFilter('');
                 setSortOrder('DESC');
               }}
+              style={{ borderRadius: '12px' }}
             >
               <X size={16} />
               <span>Reset Filters</span>

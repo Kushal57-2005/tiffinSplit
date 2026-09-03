@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Wallet, CreditCard, CheckCircle2, XCircle, AlertTriangle, X, Filter } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/UI/Button';
 import { Badge } from '../components/UI/Badge';
 import { Card } from '../components/UI/Card';
-import { Modal } from '../components/UI/Modal';
 import { EmptyState } from '../components/UI/EmptyState';
 import { LoadingSpinner } from '../components/UI/LoadingSpinner';
+import { CustomSelectDropdown } from '../components/UI/CustomSelectDropdown';
 import { normalizePhoneNumber, formatWhatsAppPaymentRejectedMessage, createWhatsAppUrl, getPublicAppUrl } from '../utils/whatsapp';
 
 export function Payments() {
   const { activeWorkspaceId, activeWorkspace, apiFetch } = useAuth();
+  const navigate = useNavigate();
 
   const [payments, setPayments] = useState([]);
   const [pendingPayments, setPendingPayments] = useState([]);
@@ -21,16 +23,6 @@ export function Payments() {
   const [selectedMonth, setSelectedMonth] = useState('');
   const [selectedYear, setSelectedYear] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
-
-  // Record Payment Modal (Head bypass direct record)
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedFriendId, setSelectedFriendId] = useState('');
-  const [amount, setAmount] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('UPI');
-  const [transactionRef, setTransactionRef] = useState('');
-  const [notes, setNotes] = useState('');
-  const [modalError, setModalError] = useState('');
-  const [submitting, setSubmitting] = useState(false);
 
   // Head Verification / Rejection Modals
   const [verifyModal, setVerifyModal] = useState(null);
@@ -66,49 +58,6 @@ export function Payments() {
   useEffect(() => {
     fetchPaymentsData();
   }, [activeWorkspaceId]);
-
-  const openPaymentModal = () => {
-    setSelectedFriendId(friends.length > 0 ? friends[0].id : '');
-    setAmount('');
-    setPaymentMethod('UPI');
-    setTransactionRef('');
-    setNotes('');
-    setModalError('');
-    setIsModalOpen(true);
-  };
-
-  const handleRecordPayment = async (e) => {
-    e.preventDefault();
-    setModalError('');
-
-    const amt = parseFloat(amount);
-    if (!selectedFriendId || isNaN(amt) || amt <= 0) {
-      setModalError('Friend and a positive payment amount are required');
-      return;
-    }
-
-    setSubmitting(true);
-
-    try {
-      await apiFetch(`/workspaces/${activeWorkspaceId}/payments`, {
-        method: 'POST',
-        body: JSON.stringify({
-          friendId: selectedFriendId,
-          amount: amt,
-          paymentMethod,
-          transactionRef,
-          notes
-        })
-      });
-
-      setIsModalOpen(false);
-      fetchPaymentsData();
-    } catch (err) {
-      setModalError(err.message || 'Failed to record payment');
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   const handleVerifyConfirm = async () => {
     if (!verifyModal) return;
@@ -204,7 +153,7 @@ export function Payments() {
             Review pending payment reports from roommates and track verified financial history
           </p>
         </div>
-        <Button onClick={openPaymentModal} className="btn-mobile-full">
+        <Button onClick={() => navigate('/payments/new')} className="btn-mobile-full">
           <CreditCard size={16} />
           <span>Record Direct Payment</span>
         </Button>
@@ -385,68 +334,63 @@ export function Payments() {
 
       {/* Month, Year & Status Filter Controls */}
       <Card>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', flex: 1 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-muted)', fontWeight: '500', fontSize: '0.85rem' }}>
-              <Filter size={16} />
-              <span>Filter:</span>
-            </div>
-
-            {/* Month Selector */}
-            <select
-              className="select"
-              style={{ width: 'auto', minWidth: '130px' }}
+        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.85rem' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.85rem', flexWrap: 'wrap', flex: 1 }}>
+            {/* Month Dropdown */}
+            <CustomSelectDropdown
+              label="Month"
               value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-            >
-              <option value="">All Months</option>
-              {monthNames.map((m, idx) => (
-                <option key={idx + 1} value={idx + 1}>
-                  {m}
-                </option>
-              ))}
-            </select>
+              onChange={setSelectedMonth}
+              options={[
+                { label: 'All Months', value: '' },
+                ...monthNames.map((m, idx) => ({ label: m, value: String(idx + 1) }))
+              ]}
+              minWidth="140px"
+            />
 
-            {/* Year Selector */}
-            <select
-              className="select"
-              style={{ width: 'auto', minWidth: '105px' }}
+            {/* Year Dropdown */}
+            <CustomSelectDropdown
+              label="Year"
               value={selectedYear}
-              onChange={(e) => setSelectedYear(e.target.value)}
-            >
-              <option value="">All Years</option>
-              <option value="2024">2024</option>
-              <option value="2025">2025</option>
-              <option value="2026">2026</option>
-              <option value="2027">2027</option>
-            </select>
+              onChange={setSelectedYear}
+              options={[
+                { label: 'All Years', value: '' },
+                { label: '2024', value: '2024' },
+                { label: '2025', value: '2025' },
+                { label: '2026', value: '2026' },
+                { label: '2027', value: '2027' }
+              ]}
+              minWidth="120px"
+            />
 
-            {/* Status Selector */}
-            <select
-              className="select"
-              style={{ width: 'auto', minWidth: '130px' }}
+            {/* Status Dropdown */}
+            <CustomSelectDropdown
+              label="Status"
               value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
-            >
-              <option value="">All Statuses</option>
-              <option value="SUCCESS">Verified / Success</option>
-              <option value="PENDING">Pending Verification</option>
-              <option value="REJECTED">Rejected</option>
-            </select>
+              onChange={setSelectedStatus}
+              options={[
+                { label: 'All Statuses', value: '' },
+                { label: 'Verified / Success', value: 'SUCCESS' },
+                { label: 'Pending Verification', value: 'PENDING' },
+                { label: 'Rejected', value: 'REJECTED' }
+              ]}
+              minWidth="160px"
+            />
 
             {(selectedMonth || selectedYear || selectedStatus) && (
-              <Button
-                variant="secondary"
-                size="sm"
+              <button
+                type="button"
+                className="btn btn-secondary"
                 onClick={() => {
                   setSelectedMonth('');
                   setSelectedYear('');
                   setSelectedStatus('');
                 }}
-                style={{ fontSize: '0.78rem', padding: '0.3rem 0.55rem' }}
+                style={{ padding: '0.45rem 0.75rem', fontSize: '0.85rem', borderRadius: '12px' }}
               >
-                <X size={14} /> Clear
-              </Button>
+                <X size={16} />
+                <span>Clear all</span>
+              </button>
             )}
           </div>
 
@@ -614,94 +558,7 @@ export function Payments() {
         </>
       )}
 
-      {/* Direct Record Payment Modal */}
-      <Modal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title="Record Direct Payment"
-      >
-        {modalError && (
-          <div style={{ backgroundColor: 'var(--error-bg)', color: 'var(--error-text)', padding: '0.6rem', borderRadius: 'var(--radius-sm)', fontSize: '0.85rem', marginBottom: '1rem' }}>
-            {modalError}
-          </div>
-        )}
 
-        <form onSubmit={handleRecordPayment}>
-          <div className="form-group">
-            <label className="form-label">Friend / Roommate *</label>
-            <select
-              className="select"
-              required
-              value={selectedFriendId}
-              onChange={(e) => setSelectedFriendId(e.target.value)}
-            >
-              {friends.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.fullName} ({f.shortCode})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Payment Amount (₹) *</label>
-            <input
-              type="number"
-              className="input font-mono"
-              required
-              min="1"
-              placeholder="e.g. 500"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-            />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Payment Method *</label>
-            <select
-              className="select"
-              value={paymentMethod}
-              onChange={(e) => setPaymentMethod(e.target.value)}
-            >
-              <option value="UPI">UPI</option>
-              <option value="CASH">Cash</option>
-              <option value="BANK_TRANSFER">Bank Transfer</option>
-              <option value="OTHER">Other</option>
-            </select>
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Transaction Reference / UTR (Optional)</label>
-            <input
-              type="text"
-              className="input font-mono"
-              placeholder="UPI Ref ID e.g. 42381920"
-              value={transactionRef}
-              onChange={(e) => setTransactionRef(e.target.value)}
-            />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Notes (Optional)</label>
-            <input
-              type="text"
-              className="input"
-              placeholder="e.g. Sent via PhonePe / GPay"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-            />
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.25rem' }}>
-            <Button variant="secondary" onClick={() => setIsModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={submitting}>
-              {submitting ? 'Recording...' : 'Record Payment'}
-            </Button>
-          </div>
-        </form>
-      </Modal>
 
       {/* CONFIRM VERIFY PAYMENT MODAL */}
       {verifyModal && (

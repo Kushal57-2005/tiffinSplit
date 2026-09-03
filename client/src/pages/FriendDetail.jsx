@@ -84,26 +84,26 @@ export function FriendDetail() {
               No invoices generated for this friend yet.
             </p>
           ) : (
-            <div className="table-container">
-              <table className="table">
+            <div className="table-container" style={{ overflowX: 'hidden' }}>
+              <table className="table" style={{ fontSize: '0.82rem', width: '100%' }}>
                 <thead>
                   <tr>
-                    <th>Period</th>
-                    <th className="num">Meals</th>
-                    <th className="num">Total</th>
-                    <th className="num">Due</th>
-                    <th>Status</th>
+                    <th style={{ padding: '0.5rem 0.35rem' }}>Period</th>
+                    <th className="num" style={{ padding: '0.5rem 0.35rem' }}>Meals</th>
+                    <th className="num" style={{ padding: '0.5rem 0.35rem' }}>Total</th>
+                    <th className="num" style={{ padding: '0.5rem 0.35rem' }}>Due</th>
+                    <th style={{ padding: '0.5rem 0.35rem', textAlign: 'right' }}>Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {friend.invoices.map((inv) => (
                     <tr key={inv.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/invoices/${inv.id}`)}>
-                      <td>{inv.month}/{inv.year}</td>
-                      <td className="num">{inv.totalMeals}</td>
-                      <td className="num">₹{inv.totalAmount.toLocaleString()}</td>
-                      <td className="num">₹{inv.amountDue.toLocaleString()}</td>
-                      <td>
-                        <Badge variant={inv.status === 'PAID' ? 'success' : inv.status === 'PARTIALLY_PAID' ? 'warning' : 'info'}>
+                      <td style={{ padding: '0.5rem 0.35rem', fontWeight: '500' }}>{inv.month}/{inv.year}</td>
+                      <td className="num" style={{ padding: '0.5rem 0.35rem' }}>{inv.totalMeals}</td>
+                      <td className="num" style={{ padding: '0.5rem 0.35rem' }}>₹{inv.totalAmount.toLocaleString()}</td>
+                      <td className="num" style={{ padding: '0.5rem 0.35rem' }}>₹{inv.amountDue.toLocaleString()}</td>
+                      <td style={{ padding: '0.5rem 0.35rem', textAlign: 'right' }}>
+                        <Badge variant={inv.status === 'PAID' ? 'success' : inv.status === 'PARTIALLY_PAID' ? 'warning' : 'info'} style={{ fontSize: '0.7rem', padding: '0.15rem 0.35rem' }}>
                           {inv.status}
                         </Badge>
                       </td>
@@ -121,21 +121,21 @@ export function FriendDetail() {
               No payments recorded for this friend yet.
             </p>
           ) : (
-            <div className="table-container">
-              <table className="table">
+            <div className="table-container" style={{ overflowX: 'hidden' }}>
+              <table className="table" style={{ fontSize: '0.82rem', width: '100%' }}>
                 <thead>
                   <tr>
-                    <th>Date</th>
-                    <th>Method</th>
-                    <th className="num">Amount</th>
+                    <th style={{ padding: '0.5rem 0.4rem' }}>Date</th>
+                    <th style={{ padding: '0.5rem 0.4rem' }}>Method</th>
+                    <th className="num" style={{ padding: '0.5rem 0.4rem' }}>Amount</th>
                   </tr>
                 </thead>
                 <tbody>
                   {friend.payments.map((p) => (
                     <tr key={p.id}>
-                      <td>{new Date(p.paidAt).toLocaleDateString()}</td>
-                      <td><Badge variant="neutral">{p.paymentMethod}</Badge></td>
-                      <td className="num" style={{ fontWeight: '600' }}>₹{p.amount.toLocaleString()}</td>
+                      <td style={{ padding: '0.5rem 0.4rem' }}>{new Date(p.paidAt).toLocaleDateString()}</td>
+                      <td style={{ padding: '0.5rem 0.4rem' }}><Badge variant="neutral">{p.paymentMethod}</Badge></td>
+                      <td className="num" style={{ padding: '0.5rem 0.4rem', fontWeight: '600' }}>₹{p.amount.toLocaleString()}</td>
                     </tr>
                   ))}
                 </tbody>

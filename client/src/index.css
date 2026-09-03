@@ -513,6 +513,9 @@ p, body {
   .mobile-only-user-footer {
     display: none !important;
   }
+  .desktop-only-table {
+    overflow-x: hidden !important;
+  }
 }
 @media (max-width: 768px) {
   .desktop-only-table {
@@ -570,6 +573,100 @@ p, body {
   flex-shrink: 0;
 }
 
+.activity-timeline-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.75rem 0;
+}
+
+.activity-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 0.5rem;
+}
+
+.activity-right-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.activity-flag-badge {
+  font-size: 0.7rem !important;
+  padding: 0.15rem 0.45rem !important;
+  line-height: 1.25;
+}
+
+@media (max-width: 640px) {
+  .activity-timeline-item {
+    position: relative !important;
+    padding-top: 0.75rem !important;
+  }
+
+  .activity-item-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 0.2rem !important;
+  }
+
+  .activity-flag-badge {
+    position: absolute !important;
+    top: 0.65rem !important;
+    right: 0 !important;
+    font-size: 0.68rem !important;
+    padding: 0.12rem 0.4rem !important;
+  }
+}
+
+/* Tooltip Component with Smooth Rounded Corners */
+.tooltip-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.tooltip-wrapper .tooltip-content {
+  visibility: hidden;
+  opacity: 0;
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  background-color: var(--text);
+  color: var(--surface);
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.35rem 0.65rem;
+  border-radius: 8px;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
+  z-index: 1000;
+}
+
+.tooltip-wrapper .tooltip-content::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 4px;
+  border-style: solid;
+  border-color: var(--text) transparent transparent transparent;
+}
+
+.tooltip-wrapper:hover .tooltip-content {
+  visibility: visible;
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
 .timeline-time {
   font-family: var(--font-util);
   font-size: 0.8rem;
@@ -585,13 +682,14 @@ p, body {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: rgba(0, 0, 0, 0.55);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  z-index: 100;
-  padding: 0.85rem;
-  backdrop-filter: blur(3px);
+  z-index: 2000;
+  padding: 1.5rem 1rem;
+  backdrop-filter: blur(4px);
+  overflow-y: auto;
 }
 
 .modal-content {
@@ -599,11 +697,12 @@ p, body {
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
   padding: 1.25rem;
-  width: calc(100% - 1.5rem);
+  width: 100%;
   max-width: 520px;
-  max-height: calc(100vh - 2.5rem);
+  max-height: calc(100vh - 3rem);
   overflow-y: auto;
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+  margin-top: 1.5rem;
 }
 
 @media (min-width: 769px) {
@@ -620,4 +719,56 @@ p, body {
 
 .animate-fade-in {
   animation: fadeIn 0.2s ease-out forwards;
+}
+
+/* Responsive Date Range Picker Popover */
+.date-range-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 1000;
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  width: max-content;
+  max-width: 92vw;
+  overflow: hidden;
+}
+
+@media (max-width: 640px) {
+  .date-range-popover {
+    position: absolute !important;
+    top: calc(100% + 6px) !important;
+    left: 0 !important;
+    transform: none !important;
+    width: min(290px, calc(100vw - 2.5rem)) !important;
+    max-width: calc(100vw - 2.5rem) !important;
+    z-index: 1000 !important;
+  }
+
+  .date-picker-grid-container {
+    padding: 0.65rem 0.4rem !important;
+    gap: 0.5rem !important;
+    justify-content: center !important;
+    width: 100% !important;
+  }
+
+  .date-picker-month {
+    width: 100% !important;
+    max-width: 250px !important;
+  }
+
+  .date-picker-bottom-bar {
+    padding: 0.5rem 0.4rem !important;
+    justify-content: center !important;
+  }
+
+  .date-picker-bottom-input {
+    width: 80px !important;
+    padding: 0.25rem 0.2rem !important;
+    font-size: 0.72rem !important;
+  }
 }

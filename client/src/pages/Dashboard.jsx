@@ -18,6 +18,7 @@ import {
   Filter,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { CustomSelectDropdown } from "../components/UI/CustomSelectDropdown";
 import { Card } from "../components/UI/Card";
 import { Button } from "../components/UI/Button";
 import { Badge } from "../components/UI/Badge";
@@ -28,7 +29,7 @@ import {
   createWhatsAppUrl,
   getPublicAppUrl,
 } from "../utils/whatsapp";
-import { formatActivityMessage } from "../utils/activity";
+import { formatActivityMessage, formatActivityAction } from "../utils/activity";
 
 export function Dashboard() {
   const { user, activeWorkspaceId, activeWorkspace, apiFetch } = useAuth();
@@ -338,7 +339,7 @@ export function Dashboard() {
         <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
           <Button onClick={() => navigate("/entries/new")}>
             <PlusCircle size={16} />
-            <span>+ Add Meal</span>
+            <span>Add Meal</span>
           </Button>
         </div>
       </div>
@@ -425,56 +426,43 @@ export function Dashboard() {
               <span>Filter:</span>
             </div>
 
-            {/* Month Selector */}
-            <select
-              className="select"
-              style={{
-                width: "auto",
-                minWidth: "125px",
-                padding: "0.35rem 0.65rem",
-                fontSize: "0.85rem",
-              }}
+            {/* Month Dropdown */}
+            <CustomSelectDropdown
               value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-            >
-              {monthNames.map((m, idx) => (
-                <option key={idx + 1} value={idx + 1}>
-                  {m}
-                </option>
-              ))}
-            </select>
+              onChange={setSelectedMonth}
+              options={monthNames.map((m, idx) => ({
+                label: m,
+                value: idx + 1,
+              }))}
+              minWidth="125px"
+            />
 
-            {/* Year Selector */}
-            <select
-              className="select"
-              style={{
-                width: "auto",
-                minWidth: "95px",
-                padding: "0.35rem 0.65rem",
-                fontSize: "0.85rem",
-              }}
+            {/* Year Dropdown */}
+            <CustomSelectDropdown
               value={selectedYear}
-              onChange={(e) => setSelectedYear(e.target.value)}
-            >
-              <option value="2024">2024</option>
-              <option value="2025">2025</option>
-              <option value="2026">2026</option>
-              <option value="2027">2027</option>
-            </select>
+              onChange={setSelectedYear}
+              options={[
+                { label: "2024", value: 2024 },
+                { label: "2025", value: 2025 },
+                { label: "2026", value: 2026 },
+                { label: "2027", value: 2027 },
+              ]}
+              minWidth="95px"
+            />
 
-            {(selectedMonth !== currentMonthStr ||
-              selectedYear !== currentYearStr) && (
-              <Button
-                variant="secondary"
-                size="sm"
+            {(String(selectedMonth) !== String(currentMonthStr) ||
+              String(selectedYear) !== String(currentYearStr)) && (
+              <button
+                type="button"
+                className="btn btn-secondary"
                 onClick={() => {
                   setSelectedMonth(currentMonthStr);
                   setSelectedYear(currentYearStr);
                 }}
-                style={{ fontSize: "0.78rem", padding: "0.3rem 0.55rem" }}
+                style={{ fontSize: "0.85rem", padding: "0.45rem 0.75rem", borderRadius: "12px" }}
               >
-                <X size={13} /> Current Month
-              </Button>
+                <X size={14} /> Current Month
+              </button>
             )}
           </div>
         </div>
@@ -1198,31 +1186,47 @@ export function Dashboard() {
             </p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column" }}>
-              {recentActivity.map((log) => (
-                <div key={log.id} className="timeline-item">
-                  <div className="timeline-dot" />
-                  <span className="timeline-time">
-                    {new Date(log.createdAt).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </span>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: "500", fontSize: "0.85rem" }}>
-                      {log.user ? log.user.name : "System"}
+              {recentActivity.map((log) => {
+                const dateObj = new Date(log.createdAt);
+                const dateStr = dateObj.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+                const timeStr = dateObj.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+                const actionText = formatActivityAction(log.action, log.message);
+                const variant = log.action?.includes('REJECTED')
+                  ? 'danger'
+                  : log.action?.includes('REPORTED')
+                  ? 'warning'
+                  : log.action?.includes('VERIFIED')
+                  ? 'success'
+                  : 'neutral';
+
+                return (
+                  <div key={log.id} className="timeline-item activity-timeline-item">
+                    <div className="activity-item-header">
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                        <div className="timeline-dot" style={{ marginTop: 0 }} />
+                        <strong style={{ fontSize: "0.88rem", fontWeight: "600" }}>
+                          {log.user ? log.user.name : "System"}
+                        </strong>
+                      </div>
+
+                      <div className="activity-right-group">
+                        <span className="timeline-time" style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>
+                          {dateStr} {timeStr}
+                        </span>
+                        <Badge variant={variant} className="activity-flag-badge">
+                          {actionText}
+                        </Badge>
+                      </div>
                     </div>
-                    <p
-                      style={{
-                        fontSize: "0.82rem",
-                        color: "var(--text-muted)",
-                        marginTop: "0.1rem",
-                      }}
-                    >
-                      {formatActivityMessage(log.message)}
-                    </p>
+
+                    <div style={{ paddingLeft: "1.25rem", marginTop: "0.15rem" }}>
+                      <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", margin: 0 }}>
+                        {formatActivityMessage(log.message)}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </Card>

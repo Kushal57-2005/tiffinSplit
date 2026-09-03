@@ -6,6 +6,8 @@ import { Modal } from '../components/UI/Modal';
 import { Button } from '../components/UI/Button';
 import { LoadingSpinner } from '../components/UI/LoadingSpinner';
 
+import { CustomSelectDropdown } from '../components/UI/CustomSelectDropdown';
+
 export function PublicInvoice() {
   const { invoiceId } = useParams();
   const [invoice, setInvoice] = useState(null);
@@ -363,8 +365,8 @@ export function PublicInvoice() {
             ))}
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '2rem' }}>
-            <div style={{ width: '100%', maxWidth: '320px', backgroundColor: 'var(--surface-muted)', padding: '1rem 1.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
+          <div style={{ width: '100%', marginBottom: '2rem' }}>
+            <div style={{ width: '100%', backgroundColor: 'var(--surface-muted)', padding: '1.25rem 1.5rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.9rem' }}>
                 <span>Total Meals Count:</span>
                 <strong className="font-mono">{invoice.totalMeals}</strong>
@@ -377,15 +379,15 @@ export function PublicInvoice() {
                 <span>Subtotal:</span>
                 <span className="font-mono">₹{invoice.subtotalAmount.toLocaleString()}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '0.5rem', borderTop: '1px solid var(--border)', fontSize: '1rem', fontWeight: '600' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '0.65rem', borderTop: '1px solid var(--border)', fontSize: '1rem', fontWeight: '600' }}>
                 <span>Total Amount:</span>
                 <span className="font-mono">₹{invoice.totalAmount.toLocaleString()}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.25rem', fontSize: '0.9rem', color: 'var(--success-text)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.35rem', fontSize: '0.9rem', color: 'var(--success-text)' }}>
                 <span>Amount Paid:</span>
                 <span className="font-mono">₹{invoice.amountPaid.toLocaleString()}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.25rem', fontSize: '1.05rem', fontWeight: '700', color: invoice.amountDue > 0 ? 'var(--warning-text)' : 'inherit' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.35rem', fontSize: '1.05rem', fontWeight: '700', color: invoice.amountDue > 0 ? 'var(--warning-text)' : 'inherit' }}>
                 <span>Amount Due:</span>
                 <span className="font-mono">₹{invoice.amountDue.toLocaleString()}</span>
               </div>
@@ -488,19 +490,18 @@ export function PublicInvoice() {
             </span>
           </div>
 
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Payment Method *</label>
-            <select
-              className="select"
-              value={reportMethod}
-              onChange={(e) => setReportMethod(e.target.value)}
-            >
-              <option value="UPI">UPI (Google Pay / PhonePe / Paytm)</option>
-              <option value="CASH">Cash</option>
-              <option value="BANK_TRANSFER">Bank Transfer</option>
-              <option value="OTHER">Other</option>
-            </select>
-          </div>
+          <CustomSelectDropdown
+            label="Payment Method *"
+            value={reportMethod}
+            onChange={setReportMethod}
+            options={[
+              { label: 'UPI (Google Pay / PhonePe / Paytm)', value: 'UPI' },
+              { label: 'Cash', value: 'CASH' },
+              { label: 'Bank Transfer', value: 'BANK_TRANSFER' },
+              { label: 'Other', value: 'OTHER' }
+            ]}
+            minWidth="100%"
+          />
 
           <div className="form-group" style={{ marginBottom: 0 }}>
             <label className="form-label">UPI Transaction ID / UTR (Recommended)</label>

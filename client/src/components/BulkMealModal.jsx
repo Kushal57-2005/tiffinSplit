@@ -5,6 +5,7 @@ import { Modal } from './UI/Modal';
 import { Button } from './UI/Button';
 import { Badge } from './UI/Badge';
 import { parseBulkMealText } from '../utils/bulkParser';
+import { CustomSelectDropdown } from './UI/CustomSelectDropdown';
 
 export function BulkMealModal({ isOpen, onClose, onImportSuccess }) {
   const { activeWorkspaceId, apiFetch } = useAuth();
@@ -105,14 +106,17 @@ export function BulkMealModal({ isOpen, onClose, onImportSuccess }) {
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '0.85rem' }}>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Year</label>
-            <select className="select" value={defaultYear} onChange={(e) => setDefaultYear(parseInt(e.target.value))}>
-              <option value={2025}>2025</option>
-              <option value={2026}>2026</option>
-              <option value={2027}>2027</option>
-            </select>
-          </div>
+          <CustomSelectDropdown
+            label="Year"
+            value={defaultYear}
+            onChange={(val) => setDefaultYear(parseInt(val))}
+            options={[
+              { label: '2025', value: 2025 },
+              { label: '2026', value: 2026 },
+              { label: '2027', value: 2027 }
+            ]}
+            minWidth="105px"
+          />
 
           <div className="form-group" style={{ marginBottom: 0 }}>
             <label className="form-label">Morning Rate (₹)</label>
