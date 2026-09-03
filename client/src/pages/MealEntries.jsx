@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { UtensilsCrossed, Plus, Edit3, Trash2, Filter, FileText, X } from 'lucide-react';
+import { UtensilsCrossed, Plus, Edit3, Trash2, Filter, FileText, X, ArrowUpDown, ArrowDown, ArrowUp } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Card } from '../components/UI/Card';
 import { Button } from '../components/UI/Button';
@@ -8,6 +8,7 @@ import { Badge } from '../components/UI/Badge';
 import { EmptyState } from '../components/UI/EmptyState';
 import { LoadingSpinner } from '../components/UI/LoadingSpinner';
 import { BulkMealModal } from '../components/BulkMealModal';
+import { DateRangePicker } from '../components/UI/DateRangePicker';
 
 export function MealEntries() {
   const { activeWorkspaceId, apiFetch } = useAuth();
@@ -19,6 +20,7 @@ export function MealEntries() {
   // Filters & Sorting state
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [dateRangeLabel, setDateRangeLabel] = useState('All Time');
   const [selectedMonth, setSelectedMonth] = useState('');
   const [selectedYear, setSelectedYear] = useState('');
   const [mealTypeFilter, setMealTypeFilter] = useState('');
@@ -56,6 +58,16 @@ export function MealEntries() {
   useEffect(() => {
     fetchEntries();
   }, [activeWorkspaceId, mealTypeFilter, selectedMonth, selectedYear]);
+
+  const handleDateRangeChange = ({ startDate: s, endDate: e, label }) => {
+    setStartDate(s);
+    setEndDate(e);
+    setDateRangeLabel(label);
+    if (label !== 'Custom Range' && (s || e)) {
+      setSelectedMonth('');
+      setSelectedYear('');
+    }
+  };
 
   const filteredEntries = entries
     .filter((entry) => {
@@ -115,62 +127,21 @@ export function MealEntries() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-muted)', fontWeight: '500', fontSize: '0.85rem' }}>
               <Filter size={16} />
-              <span>Filter & Sort:</span>
+              <span>Filter:</span>
             </div>
 
-            {/* Date Range Inputs */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>From:</span>
-              <input
-                type="date"
-                className="input font-mono"
-                style={{ width: 'auto', padding: '0.35rem 0.5rem', fontSize: '0.82rem' }}
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-              />
-              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>To:</span>
-              <input
-                type="date"
-                className="input font-mono"
-                style={{ width: 'auto', padding: '0.35rem 0.5rem', fontSize: '0.82rem' }}
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-              />
-            </div>
-
-            {/* Month Selector */}
-            <select
-              className="select"
-              style={{ width: 'auto', minWidth: '120px', padding: '0.35rem 0.5rem', fontSize: '0.82rem' }}
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-            >
-              <option value="">All Months</option>
-              {monthNames.map((m, idx) => (
-                <option key={idx + 1} value={idx + 1}>
-                  {m}
-                </option>
-              ))}
-            </select>
-
-            {/* Year Selector */}
-            <select
-              className="select"
-              style={{ width: 'auto', minWidth: '95px', padding: '0.35rem 0.5rem', fontSize: '0.82rem' }}
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(e.target.value)}
-            >
-              <option value="">All Years</option>
-              <option value="2024">2024</option>
-              <option value="2025">2025</option>
-              <option value="2026">2026</option>
-              <option value="2027">2027</option>
-            </select>
+            {/* Modern Date Range Picker */}
+            <DateRangePicker
+              startDate={startDate}
+              endDate={endDate}
+              label={dateRangeLabel}
+              onChange={handleDateRangeChange}
+            />
 
             {/* Meal Type Selector */}
             <select
               className="select"
-              style={{ width: 'auto', minWidth: '125px', padding: '0.35rem 0.5rem', fontSize: '0.82rem' }}
+              style={{ width: 'auto', minWidth: '125px', padding: '0.4rem 0.65rem', fontSize: '0.85rem' }}
               value={mealTypeFilter}
               onChange={(e) => setMealTypeFilter(e.target.value)}
             >
@@ -179,19 +150,25 @@ export function MealEntries() {
               <option value="NIGHT">Night Only</option>
             </select>
 
-            {/* Sort Order Selector */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Sort:</span>
-              <select
-                className="select"
-                style={{ width: 'auto', minWidth: '135px', padding: '0.35rem 0.5rem', fontSize: '0.82rem' }}
-                value={sortOrder}
-                onChange={(e) => setSortOrder(e.target.value)}
-              >
-                <option value="DESC">Newest First (↓)</option>
-                <option value="ASC">Oldest First (↑)</option>
-              </select>
-            </div>
+            {/* Sort Toggle Button (Arrow Down / Arrow Up) */}
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => setSortOrder(sortOrder === 'DESC' ? 'ASC' : 'DESC')}
+              title={sortOrder === 'DESC' ? 'Sorted Newest First (Click to sort Oldest First)' : 'Sorted Oldest First (Click to sort Newest First)'}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                padding: '0.4rem 0.65rem',
+                fontSize: '0.85rem',
+                backgroundColor: 'var(--surface)'
+              }}
+            >
+              <ArrowUpDown size={14} style={{ color: 'var(--brown)' }} />
+              <span>{sortOrder === 'DESC' ? 'Newest' : 'Oldest'}</span>
+              {sortOrder === 'DESC' ? <ArrowDown size={14} /> : <ArrowUp size={14} />}
+            </button>
 
             {(startDate || endDate || selectedMonth || selectedYear || mealTypeFilter || sortOrder !== 'DESC') && (
               <Button
@@ -200,12 +177,13 @@ export function MealEntries() {
                 onClick={() => {
                   setStartDate('');
                   setEndDate('');
+                  setDateRangeLabel('All Time');
                   setSelectedMonth('');
                   setSelectedYear('');
                   setMealTypeFilter('');
                   setSortOrder('DESC');
                 }}
-                style={{ fontSize: '0.78rem', padding: '0.3rem 0.55rem' }}
+                style={{ fontSize: '0.78rem', padding: '0.35rem 0.55rem' }}
               >
                 <X size={14} /> Clear
               </Button>
