@@ -6,6 +6,8 @@ import { Badge } from '../components/UI/Badge';
 import { EmptyState } from '../components/UI/EmptyState';
 import { LoadingSpinner } from '../components/UI/LoadingSpinner';
 
+import { formatActivityAction, formatActivityMessage } from '../utils/activity';
+
 export function Activity() {
   const { activeWorkspaceId, apiFetch } = useAuth();
 
@@ -65,7 +67,7 @@ export function Activity() {
 
               return (
                 <div key={log.id} className="timeline-item" style={{ flexDirection: 'column', gap: '0.25rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', flexWrap: 'wrap' }}>
                     <div className="timeline-dot" />
                     <strong style={{ fontSize: '0.88rem', fontWeight: '600' }}>
                       {log.user ? log.user.name : 'System'}
@@ -74,13 +76,13 @@ export function Activity() {
                       {dateStr} {timeStr}
                     </span>
                     <Badge variant="neutral" style={{ fontSize: '0.7rem' }}>
-                      {log.action.replace('_', ' ')}
+                      {formatActivityAction(log.action, log.message)}
                     </Badge>
                   </div>
 
                   <div style={{ paddingLeft: '1.25rem' }}>
                     <p className="text-break" style={{ fontSize: '0.88rem', color: 'var(--text)', margin: 0, lineHeight: 1.4 }}>
-                      {log.message}
+                      {formatActivityMessage(log.message)}
                     </p>
                   </div>
                 </div>

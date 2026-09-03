@@ -28,6 +28,7 @@ import {
   createWhatsAppUrl,
   getPublicAppUrl,
 } from "../utils/whatsapp";
+import { formatActivityMessage } from "../utils/activity";
 
 export function Dashboard() {
   const { user, activeWorkspaceId, activeWorkspace, apiFetch } = useAuth();
@@ -1217,7 +1218,7 @@ export function Dashboard() {
                         marginTop: "0.1rem",
                       }}
                     >
-                      {log.message}
+                      {formatActivityMessage(log.message)}
                     </p>
                   </div>
                 </div>

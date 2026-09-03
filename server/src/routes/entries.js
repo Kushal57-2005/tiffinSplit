@@ -177,13 +177,19 @@ router.post('/workspaces/:workspaceId/entries/bulk', verifyWorkspaceMember, asyn
         results.push(entry);
       }
 
+      const count = results.length;
+      const actionName = count === 1 ? 'MEAL_CREATED' : 'MEALS_ADDED';
+      const msg = count === 1
+        ? `${req.user.name} added 1 meal entry`
+        : `${req.user.name} added ${count} meal entries`;
+
       await logActivity(tx, {
         workspaceId: req.workspaceId,
         userId: req.user.id,
-        action: 'MEAL_BULK_CREATED',
+        action: actionName,
         entityType: 'MealEntry',
         entityId: null,
-        message: `${req.user.name} bulk imported ${results.length} meal entries`
+        message: msg
       });
 
       return results;
