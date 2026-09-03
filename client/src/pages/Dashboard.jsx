@@ -22,7 +22,12 @@ import { Card } from "../components/UI/Card";
 import { Button } from "../components/UI/Button";
 import { Badge } from "../components/UI/Badge";
 import { LoadingSpinner } from "../components/UI/LoadingSpinner";
-import { normalizePhoneNumber, formatWhatsAppPaymentRejectedMessage, createWhatsAppUrl, getPublicAppUrl } from "../utils/whatsapp";
+import {
+  normalizePhoneNumber,
+  formatWhatsAppPaymentRejectedMessage,
+  createWhatsAppUrl,
+  getPublicAppUrl,
+} from "../utils/whatsapp";
 
 export function Dashboard() {
   const { user, activeWorkspaceId, activeWorkspace, apiFetch } = useAuth();
@@ -110,7 +115,9 @@ export function Dashboard() {
       // Filter entries for target month & year
       const targetMonthEntries = entries.filter((e) => {
         const d = new Date(e.entryDate);
-        return d.getMonth() + 1 === targetMonth && d.getFullYear() === targetYear;
+        return (
+          d.getMonth() + 1 === targetMonth && d.getFullYear() === targetYear
+        );
       });
       setRecentEntries(targetMonthEntries.slice(0, 5));
 
@@ -232,9 +239,11 @@ export function Dashboard() {
 
       const targetPhone = rejectModal.friend?.phone;
       const cleanPhone = normalizePhoneNumber(targetPhone);
-      const name = rejectModal.friend?.fullName || 'there';
+      const name = rejectModal.friend?.fullName || "there";
       const invId = rejectModal.invoiceId || rejectModal.invoice?.id;
-      const invoiceUrl = invId ? getPublicAppUrl(`/invoices/view/${invId}`) : getPublicAppUrl('/invoices');
+      const invoiceUrl = invId
+        ? getPublicAppUrl(`/invoices/view/${invId}`)
+        : getPublicAppUrl("/invoices");
 
       let whatsappOpened = false;
       if (cleanPhone) {
@@ -242,11 +251,11 @@ export function Dashboard() {
           friendName: name,
           amount: rejectModal.amount,
           reason: actionReason,
-          invoiceUrl
+          invoiceUrl,
         });
         const whatsappUrl = createWhatsAppUrl(targetPhone, message);
         if (whatsappUrl) {
-          window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+          window.open(whatsappUrl, "_blank", "noopener,noreferrer");
           whatsappOpened = true;
         }
       }
@@ -272,12 +281,24 @@ export function Dashboard() {
 
   if (!activeWorkspaceId && !loading) {
     return (
-      <div style={{ padding: '3rem 1.5rem', textAlign: 'center', backgroundColor: 'var(--surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)', margin: '2rem auto', maxWidth: '600px' }}>
-        <h2 style={{ marginBottom: '0.5rem' }}>No Active Household Workspace</h2>
-        <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+      <div
+        style={{
+          padding: "3rem 1.5rem",
+          textAlign: "center",
+          backgroundColor: "var(--surface)",
+          borderRadius: "var(--radius-lg)",
+          border: "1px solid var(--border)",
+          margin: "2rem auto",
+          maxWidth: "600px",
+        }}
+      >
+        <h2 style={{ marginBottom: "0.5rem" }}>
+          No Active Household Workspace
+        </h2>
+        <p style={{ color: "var(--text-muted)", marginBottom: "1.5rem" }}>
           Please select or create a household workspace to view your dashboard.
         </p>
-        <Button onClick={() => navigate('/members')}>Manage Workspaces</Button>
+        <Button onClick={() => navigate("/members")}>Manage Workspaces</Button>
       </div>
     );
   }
@@ -317,17 +338,6 @@ export function Dashboard() {
           <Button onClick={() => navigate("/entries/new")}>
             <PlusCircle size={16} />
             <span>+ Add Meal</span>
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={() => navigate("/invoices/generate")}
-          >
-            <FileSpreadsheet size={16} />
-            <span>Generate Invoices</span>
-          </Button>
-          <Button variant="secondary" onClick={() => navigate("/payments")}>
-            <CreditCard size={16} />
-            <span>Payments</span>
           </Button>
         </div>
       </div>
@@ -392,8 +402,24 @@ export function Dashboard() {
           </div>
 
           {/* Month & Year Filter Controls for Dashboard */}
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", color: "var(--text-muted)", fontWeight: "500", fontSize: "0.85rem" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              flexWrap: "wrap",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.35rem",
+                color: "var(--text-muted)",
+                fontWeight: "500",
+                fontSize: "0.85rem",
+              }}
+            >
               <Filter size={15} />
               <span>Filter:</span>
             </div>
@@ -401,7 +427,12 @@ export function Dashboard() {
             {/* Month Selector */}
             <select
               className="select"
-              style={{ width: "auto", minWidth: "125px", padding: "0.35rem 0.65rem", fontSize: "0.85rem" }}
+              style={{
+                width: "auto",
+                minWidth: "125px",
+                padding: "0.35rem 0.65rem",
+                fontSize: "0.85rem",
+              }}
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
             >
@@ -415,7 +446,12 @@ export function Dashboard() {
             {/* Year Selector */}
             <select
               className="select"
-              style={{ width: "auto", minWidth: "95px", padding: "0.35rem 0.65rem", fontSize: "0.85rem" }}
+              style={{
+                width: "auto",
+                minWidth: "95px",
+                padding: "0.35rem 0.65rem",
+                fontSize: "0.85rem",
+              }}
               value={selectedYear}
               onChange={(e) => setSelectedYear(e.target.value)}
             >
@@ -425,7 +461,8 @@ export function Dashboard() {
               <option value="2027">2027</option>
             </select>
 
-            {(selectedMonth !== currentMonthStr || selectedYear !== currentYearStr) && (
+            {(selectedMonth !== currentMonthStr ||
+              selectedYear !== currentYearStr) && (
               <Button
                 variant="secondary"
                 size="sm"
@@ -449,13 +486,7 @@ export function Dashboard() {
           }}
         >
           {/* Total Meals */}
-          <div
-            className="card"
-            style={{
-              borderLeft: "4px solid var(--brown)",
-              backgroundColor: "var(--surface)",
-            }}
-          >
+          <div className="card">
             <div
               style={{
                 display: "flex",
@@ -499,13 +530,7 @@ export function Dashboard() {
           </div>
 
           {/* Billed Amount */}
-          <div
-            className="card"
-            style={{
-              borderLeft: "4px solid var(--purple)",
-              backgroundColor: "var(--surface)",
-            }}
-          >
+          <div className="card">
             <div
               style={{
                 display: "flex",
@@ -545,13 +570,7 @@ export function Dashboard() {
           </div>
 
           {/* Amount Paid / Collected */}
-          <div
-            className="card"
-            style={{
-              borderLeft: "4px solid var(--blue)",
-              backgroundColor: "var(--surface)",
-            }}
-          >
+          <div className="card">
             <div
               style={{
                 display: "flex",
@@ -595,13 +614,7 @@ export function Dashboard() {
           </div>
 
           {/* Outstanding Due */}
-          <div
-            className="card"
-            style={{
-              borderLeft: "4px solid var(--warning-text)",
-              backgroundColor: "var(--surface)",
-            }}
-          >
+          <div className="card">
             <div
               style={{
                 display: "flex",
@@ -641,13 +654,7 @@ export function Dashboard() {
           </div>
 
           {/* Pending Review */}
-          <div
-            className="card"
-            style={{
-              borderLeft: "4px solid var(--purple)",
-              backgroundColor: "var(--surface)",
-            }}
-          >
+          <div className="card">
             <div
               style={{
                 display: "flex",
@@ -853,37 +860,98 @@ export function Dashboard() {
           </div>
 
           {/* Mobile Card View */}
-          <div className="mobile-only-card" style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+          <div
+            className="mobile-only-card"
+            style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}
+          >
             {pendingPayments.map((p) => {
               const invRef = p.invoice
                 ? `INV-${p.invoice.year}-${String(p.invoice.month).padStart(2, "0")}-${p.friend.shortCode}`
                 : "N/A";
               return (
-                <div key={p.id} className="mobile-card" style={{ border: '1px solid var(--warning-text)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                      <span className="code-id" style={{ fontWeight: '600', fontSize: '0.78rem', padding: '0.15rem 0.4rem', backgroundColor: 'var(--surface-muted)', borderRadius: 'var(--radius-sm)' }}>
+                <div
+                  key={p.id}
+                  className="mobile-card"
+                  style={{ border: "1px solid var(--warning-text)" }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.4rem",
+                      }}
+                    >
+                      <span
+                        className="code-id"
+                        style={{
+                          fontWeight: "600",
+                          fontSize: "0.78rem",
+                          padding: "0.15rem 0.4rem",
+                          backgroundColor: "var(--surface-muted)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      >
                         {p.friend.shortCode}
                       </span>
-                      <span style={{ fontWeight: '700', fontSize: '0.95rem' }}>{p.friend.fullName}</span>
+                      <span style={{ fontWeight: "700", fontSize: "0.95rem" }}>
+                        {p.friend.fullName}
+                      </span>
                     </div>
-                    <span className="font-mono" style={{ fontWeight: '800', fontSize: '1.05rem', color: 'var(--warning-text)' }}>
+                    <span
+                      className="font-mono"
+                      style={{
+                        fontWeight: "800",
+                        fontSize: "1.05rem",
+                        color: "var(--warning-text)",
+                      }}
+                    >
                       ₹{p.amount.toLocaleString()}
                     </span>
                   </div>
 
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                    <span>Ref: <code className="code-id">{invRef}</code></span>
-                    <span>UTR: <code className="code-id">{p.transactionRef || 'None'}</code></span>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      fontSize: "0.8rem",
+                      color: "var(--text-muted)",
+                    }}
+                  >
+                    <span>
+                      Ref: <code className="code-id">{invRef}</code>
+                    </span>
+                    <span>
+                      UTR:{" "}
+                      <code className="code-id">
+                        {p.transactionRef || "None"}
+                      </code>
+                    </span>
                   </div>
 
                   {isHead && (
-                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.35rem' }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: "0.5rem",
+                        marginTop: "0.35rem",
+                      }}
+                    >
                       <Button
                         variant="secondary"
                         size="sm"
                         onClick={() => setVerifyModal(p)}
-                        style={{ flex: 1, borderColor: 'var(--success-text)', color: 'var(--success-text)' }}
+                        style={{
+                          flex: 1,
+                          borderColor: "var(--success-text)",
+                          color: "var(--success-text)",
+                        }}
                       >
                         <CheckCircle2 size={14} />
                         <span>Verify Paid</span>
@@ -891,8 +959,15 @@ export function Dashboard() {
                       <Button
                         variant="secondary"
                         size="sm"
-                        onClick={() => { setRejectModal(p); setActionReason(''); }}
-                        style={{ flex: 1, borderColor: 'var(--error-text)', color: 'var(--error-text)' }}
+                        onClick={() => {
+                          setRejectModal(p);
+                          setActionReason("");
+                        }}
+                        style={{
+                          flex: 1,
+                          borderColor: "var(--error-text)",
+                          color: "var(--error-text)",
+                        }}
                       >
                         <XCircle size={14} />
                         <span>Reject</span>
@@ -910,7 +985,7 @@ export function Dashboard() {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
           gap: "1.5rem",
         }}
       >
@@ -950,61 +1025,148 @@ export function Dashboard() {
               </span>
             </p>
           ) : (
-            <div className="table-container">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Meal</th>
-                    <th>People</th>
-                    <th className="num">Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentEntries.map((e) => {
-                    const totalAmount = e.items
-                      ? e.items.reduce((acc, i) => acc + i.lineTotal, 0)
-                      : 0;
-                    const count = e.items ? e.items.length : 0;
-                    return (
-                      <tr
-                        key={e.id}
-                        style={{ cursor: "pointer" }}
-                        onClick={() => navigate("/entries")}
+            <>
+              {/* Desktop Table View */}
+              <div className="table-container desktop-only-table">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Meal</th>
+                      <th>People</th>
+                      <th className="num">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recentEntries.map((e) => {
+                      const totalAmount = e.items
+                        ? e.items.reduce((acc, i) => acc + i.lineTotal, 0)
+                        : 0;
+                      const count = e.items ? e.items.length : 0;
+                      return (
+                        <tr
+                          key={e.id}
+                          style={{ cursor: "pointer" }}
+                          onClick={() => navigate("/entries")}
+                        >
+                          <td
+                            className="text-util"
+                            style={{ fontSize: "0.85rem" }}
+                          >
+                            {new Date(e.entryDate).toLocaleDateString(
+                              undefined,
+                              {
+                                month: "short",
+                                day: "numeric",
+                              },
+                            )}
+                          </td>
+                          <td>
+                            <Badge
+                              variant={
+                                e.mealType === "MORNING" ? "meal" : "neutral"
+                              }
+                            >
+                              {e.mealType}
+                            </Badge>
+                          </td>
+                          <td>
+                            {count} {count === 1 ? "person" : "people"}
+                          </td>
+                          <td
+                            className="num font-mono"
+                            style={{ fontWeight: "600" }}
+                          >
+                            ₹{totalAmount.toLocaleString()}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile View Cards */}
+              <div
+                className="mobile-only-card"
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "0.5rem",
+                }}
+              >
+                {recentEntries.map((e) => {
+                  const totalAmount = e.items
+                    ? e.items.reduce((acc, i) => acc + i.lineTotal, 0)
+                    : 0;
+                  const count = e.items ? e.items.length : 0;
+                  return (
+                    <div
+                      key={e.id}
+                      onClick={() => navigate("/entries")}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        backgroundColor: "var(--surface-muted)",
+                        padding: "0.65rem 0.85rem",
+                        borderRadius: "var(--radius-sm)",
+                        border: "1px solid var(--border)",
+                        cursor: "pointer",
+                        gap: "0.5rem",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.65rem",
+                        }}
                       >
-                        <td
-                          className="text-util"
-                          style={{ fontSize: "0.85rem" }}
+                        <div
+                          style={{
+                            fontWeight: "600",
+                            fontSize: "0.85rem",
+                            minWidth: "45px",
+                          }}
                         >
                           {new Date(e.entryDate).toLocaleDateString(undefined, {
                             month: "short",
                             day: "numeric",
                           })}
-                        </td>
-                        <td>
-                          <Badge
-                            variant={
-                              e.mealType === "MORNING" ? "meal" : "neutral"
-                            }
-                          >
-                            {e.mealType}
-                          </Badge>
-                        </td>
-                        <td>
-                          {count} {count === 1 ? "person" : "people"}
-                        </td>
-                        <td
-                          className="num font-mono"
-                          style={{ fontWeight: "600" }}
+                        </div>
+                        <Badge
+                          variant={
+                            e.mealType === "MORNING" ? "meal" : "neutral"
+                          }
+                          style={{ fontSize: "0.72rem" }}
+                        >
+                          {e.mealType}
+                        </Badge>
+                      </div>
+
+                      <div style={{ textAlign: "right" }}>
+                        <div
+                          className="font-mono"
+                          style={{ fontWeight: "700", fontSize: "0.95rem" }}
                         >
                           ₹{totalAmount.toLocaleString()}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                        </div>
+                        <div
+                          style={{
+                            fontSize: "0.75rem",
+                            color: "var(--text-muted)",
+                            marginTop: "0.1rem",
+                          }}
+                        >
+                          {count} {count === 1 ? "person" : "people"}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
           )}
         </Card>
 
