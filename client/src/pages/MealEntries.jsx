@@ -16,10 +16,13 @@ export function MealEntries() {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Filters state
+  // Filters & Sorting state
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [selectedMonth, setSelectedMonth] = useState('');
   const [selectedYear, setSelectedYear] = useState('');
   const [mealTypeFilter, setMealTypeFilter] = useState('');
+  const [sortOrder, setSortOrder] = useState('DESC');
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
 
   const monthNames = [
@@ -53,6 +56,22 @@ export function MealEntries() {
   useEffect(() => {
     fetchEntries();
   }, [activeWorkspaceId, mealTypeFilter, selectedMonth, selectedYear]);
+
+  const filteredEntries = entries
+    .filter((entry) => {
+      const entryDateStr = new Date(entry.entryDate).toISOString().split('T')[0];
+      if (startDate && entryDateStr < startDate) return false;
+      if (endDate && entryDateStr > endDate) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      const timeA = new Date(a.entryDate).getTime();
+      const timeB = new Date(b.entryDate).getTime();
+      if (sortOrder === 'ASC') {
+        return timeA - timeB;
+      }
+      return timeB - timeA;
+    });
 
   const handleDelete = async (entryId) => {
     if (!window.confirm('Are you sure you want to delete this meal entry? This action will be recorded in the activity log.')) {
@@ -96,13 +115,33 @@ export function MealEntries() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-muted)', fontWeight: '500', fontSize: '0.85rem' }}>
               <Filter size={16} />
-              <span>Filter:</span>
+              <span>Filter & Sort:</span>
+            </div>
+
+            {/* Date Range Inputs */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>From:</span>
+              <input
+                type="date"
+                className="input font-mono"
+                style={{ width: 'auto', padding: '0.35rem 0.5rem', fontSize: '0.82rem' }}
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>To:</span>
+              <input
+                type="date"
+                className="input font-mono"
+                style={{ width: 'auto', padding: '0.35rem 0.5rem', fontSize: '0.82rem' }}
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+              />
             </div>
 
             {/* Month Selector */}
             <select
               className="select"
-              style={{ width: 'auto', minWidth: '130px' }}
+              style={{ width: 'auto', minWidth: '120px', padding: '0.35rem 0.5rem', fontSize: '0.82rem' }}
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
             >
@@ -117,7 +156,7 @@ export function MealEntries() {
             {/* Year Selector */}
             <select
               className="select"
-              style={{ width: 'auto', minWidth: '105px' }}
+              style={{ width: 'auto', minWidth: '95px', padding: '0.35rem 0.5rem', fontSize: '0.82rem' }}
               value={selectedYear}
               onChange={(e) => setSelectedYear(e.target.value)}
             >
@@ -131,7 +170,7 @@ export function MealEntries() {
             {/* Meal Type Selector */}
             <select
               className="select"
-              style={{ width: 'auto', minWidth: '130px' }}
+              style={{ width: 'auto', minWidth: '125px', padding: '0.35rem 0.5rem', fontSize: '0.82rem' }}
               value={mealTypeFilter}
               onChange={(e) => setMealTypeFilter(e.target.value)}
             >
@@ -140,14 +179,31 @@ export function MealEntries() {
               <option value="NIGHT">Night Only</option>
             </select>
 
-            {(selectedMonth || selectedYear || mealTypeFilter) && (
+            {/* Sort Order Selector */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Sort:</span>
+              <select
+                className="select"
+                style={{ width: 'auto', minWidth: '135px', padding: '0.35rem 0.5rem', fontSize: '0.82rem' }}
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value)}
+              >
+                <option value="DESC">Newest First (↓)</option>
+                <option value="ASC">Oldest First (↑)</option>
+              </select>
+            </div>
+
+            {(startDate || endDate || selectedMonth || selectedYear || mealTypeFilter || sortOrder !== 'DESC') && (
               <Button
                 variant="secondary"
                 size="sm"
                 onClick={() => {
+                  setStartDate('');
+                  setEndDate('');
                   setSelectedMonth('');
                   setSelectedYear('');
                   setMealTypeFilter('');
+                  setSortOrder('DESC');
                 }}
                 style={{ fontSize: '0.78rem', padding: '0.3rem 0.55rem' }}
               >
@@ -157,7 +213,7 @@ export function MealEntries() {
           </div>
 
           <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontWeight: '500' }}>
-            Showing {entries.length} {entries.length === 1 ? 'record' : 'records'}
+            Showing {filteredEntries.length} {filteredEntries.length === 1 ? 'record' : 'records'}
           </div>
         </div>
       </Card>
@@ -182,6 +238,28 @@ export function MealEntries() {
             </div>
           }
         />
+      ) : filteredEntries.length === 0 ? (
+        <EmptyState
+          icon={Filter}
+          title="No meal entries match selected filters"
+          description="Try adjusting your date range, month, year, or meal type filter settings."
+          action={
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setStartDate('');
+                setEndDate('');
+                setSelectedMonth('');
+                setSelectedYear('');
+                setMealTypeFilter('');
+                setSortOrder('DESC');
+              }}
+            >
+              <X size={16} />
+              <span>Reset Filters</span>
+            </Button>
+          }
+        />
       ) : (
         <>
           {/* Desktop Table View */}
@@ -199,7 +277,7 @@ export function MealEntries() {
                 </tr>
               </thead>
               <tbody>
-                {entries.map((entry) => {
+                {filteredEntries.map((entry) => {
                   const totalQty = entry.items ? entry.items.reduce((acc, i) => acc + i.quantity, 0) : 0;
                   const totalAmount = entry.items ? entry.items.reduce((acc, i) => acc + i.lineTotal, 0) : 0;
 
@@ -274,7 +352,7 @@ export function MealEntries() {
 
           {/* Mobile Cards View */}
           <div className="mobile-only-card" style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-            {entries.map((entry) => {
+            {filteredEntries.map((entry) => {
               const totalQty = entry.items ? entry.items.reduce((acc, i) => acc + i.quantity, 0) : 0;
               const totalAmount = entry.items ? entry.items.reduce((acc, i) => acc + i.lineTotal, 0) : 0;
 
