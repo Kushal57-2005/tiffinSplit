@@ -15,6 +15,7 @@ import {
   Clock,
   AlertTriangle,
   X,
+  Filter,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { Card } from "../components/UI/Card";
@@ -27,12 +28,19 @@ export function Dashboard() {
   const { user, activeWorkspaceId, activeWorkspace, apiFetch } = useAuth();
   const navigate = useNavigate();
 
+  const now = new Date();
+  const currentMonthStr = String(now.getMonth() + 1);
+  const currentYearStr = String(now.getFullYear());
+
+  // Month & Year Filter state (Default to Current Month)
+  const [selectedMonth, setSelectedMonth] = useState(currentMonthStr);
+  const [selectedYear, setSelectedYear] = useState(currentYearStr);
+
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     periodLabel: "This Month Overview",
     monthName: "",
-    year: new Date().getFullYear(),
-    isPreviousUnsettled: false,
+    year: now.getFullYear(),
     totalMeals: 0,
     billedAmount: 0,
     paidAmount: 0,
@@ -80,9 +88,8 @@ export function Dashboard() {
     }
     setLoading(true);
     try {
-      const currentDate = new Date();
-      const curMonth = currentDate.getMonth() + 1;
-      const curYear = currentDate.getFullYear();
+      const targetMonth = parseInt(selectedMonth || currentMonthStr, 10);
+      const targetYear = parseInt(selectedYear || currentYearStr, 10);
 
       // Fetch pending verifications
       const pendingData = await apiFetch(
@@ -95,103 +102,57 @@ export function Dashboard() {
         pendingTotal = pendingData.reduce((acc, p) => acc + p.amount, 0);
       }
 
-      // Fetch entries
+      // Fetch meal entries
       const entries = await apiFetch(
         `/workspaces/${activeWorkspaceId}/entries`,
       );
-      setRecentEntries(entries.slice(0, 5));
+
+      // Filter entries for target month & year
+      const targetMonthEntries = entries.filter((e) => {
+        const d = new Date(e.entryDate);
+        return d.getMonth() + 1 === targetMonth && d.getFullYear() === targetYear;
+      });
+      setRecentEntries(targetMonthEntries.slice(0, 5));
 
       // Fetch invoices
       const invoices = await apiFetch(
         `/workspaces/${activeWorkspaceId}/invoices`,
       );
 
-      // Group invoices by "YYYY-MM"
-      const monthlyInvoiceMap = {};
-      if (Array.isArray(invoices) && invoices.length > 0) {
-        invoices.forEach((inv) => {
-          const key = `${inv.year}-${String(inv.month).padStart(2, "0")}`;
-          if (!monthlyInvoiceMap[key]) {
-            monthlyInvoiceMap[key] = {
-              year: inv.year,
-              month: inv.month,
-              invoices: [],
-              billed: 0,
-              paid: 0,
-              due: 0,
-            };
-          }
-          monthlyInvoiceMap[key].invoices.push(inv);
-          monthlyInvoiceMap[key].billed += inv.totalAmount;
-          monthlyInvoiceMap[key].paid += inv.amountPaid;
-          monthlyInvoiceMap[key].due += inv.amountDue;
-        });
-      }
-
-      // Sort invoice months ascending (oldest first) to find the oldest unsettled month (where collected < billed amount)
-      const sortedKeysAsc = Object.keys(monthlyInvoiceMap).sort();
-      const oldestUnsettledKey = sortedKeysAsc.find(
-        (key) => monthlyInvoiceMap[key].due > 0,
-      );
-
-      let targetMonth = curMonth;
-      let targetYear = curYear;
       let targetBilled = 0;
       let targetPaid = 0;
       let targetDue = 0;
-      let isPrevUnsettled = false;
+      let invoicesFound = false;
 
-      if (oldestUnsettledKey) {
-        // Show previous unsettled month data until Collected == Billed Amount
-        const monthData = monthlyInvoiceMap[oldestUnsettledKey];
-        targetMonth = monthData.month;
-        targetYear = monthData.year;
-        targetBilled = monthData.billed;
-        targetPaid = monthData.paid;
-        targetDue = monthData.due;
-
-        if (
-          targetYear < curYear ||
-          (targetYear === curYear && targetMonth < curMonth)
-        ) {
-          isPrevUnsettled = true;
-        }
-      } else {
-        // All previous billing months are fully collected! Auto-switch to Current Month Data
-        targetMonth = curMonth;
-        targetYear = curYear;
-        const curKey = `${curYear}-${String(curMonth).padStart(2, "0")}`;
-
-        if (monthlyInvoiceMap[curKey]) {
-          targetBilled = monthlyInvoiceMap[curKey].billed;
-          targetPaid = monthlyInvoiceMap[curKey].paid;
-          targetDue = monthlyInvoiceMap[curKey].due;
-        } else {
-          // If current month invoice is not generated yet, compute directly from current month's meal entries
-          const curMonthEntries = entries.filter((e) => {
-            const d = new Date(e.entryDate);
-            return d.getMonth() + 1 === curMonth && d.getFullYear() === curYear;
-          });
-          curMonthEntries.forEach((e) => {
-            if (e.items) {
-              e.items.forEach((item) => {
-                targetBilled += item.lineTotal;
-                targetDue += item.lineTotal;
-              });
-            }
+      if (Array.isArray(invoices)) {
+        const monthInvoices = invoices.filter(
+          (inv) => inv.month === targetMonth && inv.year === targetYear,
+        );
+        if (monthInvoices.length > 0) {
+          invoicesFound = true;
+          monthInvoices.forEach((inv) => {
+            targetBilled += inv.totalAmount;
+            targetPaid += inv.amountPaid;
+            targetDue += inv.amountDue;
           });
         }
+      }
+
+      // If no invoice generated yet for selected month, compute directly from meal entries
+      if (!invoicesFound) {
+        targetMonthEntries.forEach((e) => {
+          if (e.items) {
+            e.items.forEach((item) => {
+              targetBilled += item.lineTotal;
+              targetDue += item.lineTotal;
+            });
+          }
+        });
       }
 
       // Calculate total meals count for target month/year
       let targetMealsCount = 0;
-      const targetEntries = entries.filter((e) => {
-        const d = new Date(e.entryDate);
-        return (
-          d.getMonth() + 1 === targetMonth && d.getFullYear() === targetYear
-        );
-      });
-      targetEntries.forEach((e) => {
+      targetMonthEntries.forEach((e) => {
         if (e.items) {
           targetMealsCount += e.items.reduce((acc, i) => acc + i.quantity, 0);
         }
@@ -203,7 +164,6 @@ export function Dashboard() {
         periodLabel: `${monthNameStr} ${targetYear} Overview`,
         monthName: monthNameStr,
         year: targetYear,
-        isPreviousUnsettled: isPrevUnsettled,
         totalMeals: targetMealsCount,
         billedAmount: targetBilled,
         paidAmount: targetPaid,
@@ -225,7 +185,7 @@ export function Dashboard() {
 
   useEffect(() => {
     loadDashboardData();
-  }, [activeWorkspaceId]);
+  }, [activeWorkspaceId, selectedMonth, selectedYear]);
 
   // Handle Head Verifying Payment
   const handleVerifyConfirm = async () => {
@@ -422,7 +382,7 @@ export function Dashboard() {
             justifyContent: "space-between",
             marginBottom: "0.85rem",
             flexWrap: "wrap",
-            gap: "0.5rem",
+            gap: "0.75rem",
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
@@ -430,9 +390,55 @@ export function Dashboard() {
               {stats.periodLabel}
             </h2>
           </div>
-          <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
-            {stats.monthName} {stats.year}
-          </span>
+
+          {/* Month & Year Filter Controls for Dashboard */}
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", color: "var(--text-muted)", fontWeight: "500", fontSize: "0.85rem" }}>
+              <Filter size={15} />
+              <span>Filter:</span>
+            </div>
+
+            {/* Month Selector */}
+            <select
+              className="select"
+              style={{ width: "auto", minWidth: "125px", padding: "0.35rem 0.65rem", fontSize: "0.85rem" }}
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+            >
+              {monthNames.map((m, idx) => (
+                <option key={idx + 1} value={idx + 1}>
+                  {m}
+                </option>
+              ))}
+            </select>
+
+            {/* Year Selector */}
+            <select
+              className="select"
+              style={{ width: "auto", minWidth: "95px", padding: "0.35rem 0.65rem", fontSize: "0.85rem" }}
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(e.target.value)}
+            >
+              <option value="2024">2024</option>
+              <option value="2025">2025</option>
+              <option value="2026">2026</option>
+              <option value="2027">2027</option>
+            </select>
+
+            {(selectedMonth !== currentMonthStr || selectedYear !== currentYearStr) && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  setSelectedMonth(currentMonthStr);
+                  setSelectedYear(currentYearStr);
+                }}
+                style={{ fontSize: "0.78rem", padding: "0.3rem 0.55rem" }}
+              >
+                <X size={13} /> Current Month
+              </Button>
+            )}
+          </div>
         </div>
 
         <div
