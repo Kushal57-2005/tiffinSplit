@@ -519,6 +519,11 @@ p, body {
     display: none !important;
   }
 }
+@media (max-width: 640px) {
+  .desktop-only-calendar {
+    display: none !important;
+  }
+}
 
 /* Badges */
 .badge {

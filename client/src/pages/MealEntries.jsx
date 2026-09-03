@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { UtensilsCrossed, Plus, Edit3, Trash2, Filter, FileText, X, ArrowUpDown, ArrowDown, ArrowUp } from 'lucide-react';
+import { UtensilsCrossed, Plus, Edit3, Trash2, FileText, X, ChevronDown, ChevronUp, Check } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Card } from '../components/UI/Card';
 import { Button } from '../components/UI/Button';
@@ -9,6 +9,104 @@ import { EmptyState } from '../components/UI/EmptyState';
 import { LoadingSpinner } from '../components/UI/LoadingSpinner';
 import { BulkMealModal } from '../components/BulkMealModal';
 import { DateRangePicker } from '../components/UI/DateRangePicker';
+
+function SortByDropdown({ value, onChange }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (ref.current && !ref.current.contains(e.target)) setIsOpen(false);
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  return (
+    <div ref={ref} style={{ position: 'relative', display: 'flex', flexDirection: 'column' }}>
+      <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: '500', marginBottom: '0.25rem' }}>
+        Sort by
+      </label>
+      <button
+        type="button"
+        className="btn btn-secondary"
+        onClick={() => setIsOpen(!isOpen)}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          padding: '0.45rem 0.75rem',
+          fontSize: '0.85rem',
+          fontWeight: '500',
+          backgroundColor: 'var(--surface)',
+          borderColor: isOpen ? '#7F56D9' : 'var(--border)',
+          borderRadius: 'var(--radius-md)'
+        }}
+      >
+        <span>{value === 'DESC' ? 'Descending' : 'Ascending'}</span>
+        {isOpen ? <ChevronUp size={16} style={{ color: 'var(--text-muted)' }} /> : <ChevronDown size={16} style={{ color: 'var(--text-muted)' }} />}
+      </button>
+
+      {isOpen && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 4px)',
+            left: 0,
+            zIndex: 1000,
+            backgroundColor: 'var(--surface)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-md)',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+            minWidth: '150px',
+            padding: '0.35rem 0'
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => { onChange('DESC'); setIsOpen(false); }}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '0.45rem 0.75rem',
+              fontSize: '0.82rem',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: value === 'DESC' ? '#7F56D9' : 'var(--text)',
+              fontWeight: value === 'DESC' ? '600' : '400'
+            }}
+          >
+            <span>Descending</span>
+            {value === 'DESC' && <Check size={15} style={{ color: '#7F56D9' }} />}
+          </button>
+          <button
+            type="button"
+            onClick={() => { onChange('ASC'); setIsOpen(false); }}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '0.45rem 0.75rem',
+              fontSize: '0.82rem',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: value === 'ASC' ? '#7F56D9' : 'var(--text)',
+              fontWeight: value === 'ASC' ? '600' : '400'
+            }}
+          >
+            <span>Ascending</span>
+            {value === 'ASC' && <Check size={15} style={{ color: '#7F56D9' }} />}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function MealEntries() {
   const { activeWorkspaceId, apiFetch } = useAuth();
@@ -20,17 +118,10 @@ export function MealEntries() {
   // Filters & Sorting state
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [dateRangeLabel, setDateRangeLabel] = useState('All Time');
-  const [selectedMonth, setSelectedMonth] = useState('');
-  const [selectedYear, setSelectedYear] = useState('');
+  const [dateRangeLabel, setDateRangeLabel] = useState('All time');
   const [mealTypeFilter, setMealTypeFilter] = useState('');
   const [sortOrder, setSortOrder] = useState('DESC');
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
-
-  const monthNames = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
-  ];
 
   const fetchEntries = async () => {
     if (!activeWorkspaceId) {
@@ -42,9 +133,6 @@ export function MealEntries() {
       let url = `/workspaces/${activeWorkspaceId}/entries`;
       const params = new URLSearchParams();
       if (mealTypeFilter) params.append('mealType', mealTypeFilter);
-      if (selectedMonth) params.append('month', selectedMonth);
-      if (selectedYear) params.append('year', selectedYear);
-      if (params.toString()) url += `?${params.toString()}`;
 
       const data = await apiFetch(url);
       setEntries(data);
@@ -57,16 +145,12 @@ export function MealEntries() {
 
   useEffect(() => {
     fetchEntries();
-  }, [activeWorkspaceId, mealTypeFilter, selectedMonth, selectedYear]);
+  }, [activeWorkspaceId, mealTypeFilter]);
 
   const handleDateRangeChange = ({ startDate: s, endDate: e, label }) => {
     setStartDate(s);
     setEndDate(e);
     setDateRangeLabel(label);
-    if (label !== 'Custom Range' && (s || e)) {
-      setSelectedMonth('');
-      setSelectedYear('');
-    }
   };
 
   const filteredEntries = entries
@@ -123,74 +207,61 @@ export function MealEntries() {
       </div>
 
       <Card>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', flex: 1 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-muted)', fontWeight: '500', fontSize: '0.85rem' }}>
-              <Filter size={16} />
-              <span>Filter:</span>
-            </div>
-
-            {/* Modern Date Range Picker */}
-            <DateRangePicker
-              startDate={startDate}
-              endDate={endDate}
-              label={dateRangeLabel}
-              onChange={handleDateRangeChange}
-            />
+        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.85rem' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.85rem', flexWrap: 'wrap', flex: 1 }}>
+            {/* Sort by Dropdown (Untitled UI Style) */}
+            <SortByDropdown value={sortOrder} onChange={setSortOrder} />
 
             {/* Meal Type Selector */}
-            <select
-              className="select"
-              style={{ width: 'auto', minWidth: '125px', padding: '0.4rem 0.65rem', fontSize: '0.85rem' }}
-              value={mealTypeFilter}
-              onChange={(e) => setMealTypeFilter(e.target.value)}
-            >
-              <option value="">All Meal Types</option>
-              <option value="MORNING">Morning Only</option>
-              <option value="NIGHT">Night Only</option>
-            </select>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: '500', marginBottom: '0.25rem' }}>
+                Meal Type
+              </label>
+              <select
+                className="select"
+                style={{ width: 'auto', minWidth: '135px', padding: '0.45rem 0.75rem', fontSize: '0.85rem' }}
+                value={mealTypeFilter}
+                onChange={(e) => setMealTypeFilter(e.target.value)}
+              >
+                <option value="">All Meal Types</option>
+                <option value="MORNING">Morning Only</option>
+                <option value="NIGHT">Night Only</option>
+              </select>
+            </div>
 
-            {/* Sort Toggle Button (Arrow Down / Arrow Up) */}
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() => setSortOrder(sortOrder === 'DESC' ? 'ASC' : 'DESC')}
-              title={sortOrder === 'DESC' ? 'Sorted Newest First (Click to sort Oldest First)' : 'Sorted Oldest First (Click to sort Newest First)'}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.35rem',
-                padding: '0.4rem 0.65rem',
-                fontSize: '0.85rem',
-                backgroundColor: 'var(--surface)'
-              }}
-            >
-              <ArrowUpDown size={14} style={{ color: 'var(--brown)' }} />
-              <span>{sortOrder === 'DESC' ? 'Newest' : 'Oldest'}</span>
-              {sortOrder === 'DESC' ? <ArrowDown size={14} /> : <ArrowUp size={14} />}
-            </button>
+            {/* Date Range Picker Dropdown */}
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: '500', marginBottom: '0.25rem' }}>
+                Date Range
+              </label>
+              <DateRangePicker
+                startDate={startDate}
+                endDate={endDate}
+                label={dateRangeLabel}
+                onChange={handleDateRangeChange}
+              />
+            </div>
 
-            {(startDate || endDate || selectedMonth || selectedYear || mealTypeFilter || sortOrder !== 'DESC') && (
-              <Button
-                variant="secondary"
-                size="sm"
+            {/* Clear All Button */}
+            {(startDate || endDate || mealTypeFilter || sortOrder !== 'DESC') && (
+              <button
+                type="button"
+                className="btn btn-secondary"
                 onClick={() => {
                   setStartDate('');
                   setEndDate('');
-                  setDateRangeLabel('All Time');
-                  setSelectedMonth('');
-                  setSelectedYear('');
+                  setDateRangeLabel('All time');
                   setMealTypeFilter('');
                   setSortOrder('DESC');
                 }}
-                style={{ fontSize: '0.78rem', padding: '0.35rem 0.55rem' }}
+                style={{ padding: '0.45rem 0.75rem', fontSize: '0.85rem' }}
               >
-                <X size={14} /> Clear
-              </Button>
+                Clear all
+              </button>
             )}
           </div>
 
-          <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontWeight: '500' }}>
+          <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontWeight: '500', paddingBottom: '0.2rem' }}>
             Showing {filteredEntries.length} {filteredEntries.length === 1 ? 'record' : 'records'}
           </div>
         </div>
@@ -227,8 +298,7 @@ export function MealEntries() {
               onClick={() => {
                 setStartDate('');
                 setEndDate('');
-                setSelectedMonth('');
-                setSelectedYear('');
+                setDateRangeLabel('All time');
                 setMealTypeFilter('');
                 setSortOrder('DESC');
               }}
